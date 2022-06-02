@@ -1,0 +1,11 @@
+__pycache__
+__pycache__/**
+**/__pycache__
+**/__pycache__/**
+.idea
+.idea/**
+storage_data.json
+out.txt
+result.txt
+tests/data
+tests/data/**

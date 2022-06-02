@@ -1,0 +1,43 @@
+{
+	"onec": {
+		"start_path": "\"C:\\Program Files\\1cv8\\8.3.18.1289\\bin\\1cv8.exe\"",
+		"report_convert_processor_path": "\"C:\\Users\\milut\\Documents\\1C\\Работа с хранилижем\\ОтчетПоХранилищуВjson.epf\"",
+		"result_dump_path": "C:\\projects\\StorageToGit\\tests\\data\\result.txt",
+		"log_file_path": "C:\\projects\\StorageToGit\\tests\\data\\out.txt",
+		"timeout": 60,
+		"update_timeout": 600,
+		"dump_timeout": 600
+	},
+	"storage": {
+		"path": "C:\\Storage\\TestStorage",
+		"user": "ReadOnly",
+		"password": "",
+		"report_path": "C:\\projects\\StorageToGit\\tests\\data\\storage_report.mxl",
+		"json_report_path": "C:\\projects\\StorageToGit\\tests\\data\\storage_history.json",
+		"authors": [
+			{
+				"user": "Администратор",
+				"email": "admin@test.com"
+			},
+			{
+				"user": "ReadOnle",
+				"email": "readonly@readonly.com"
+			}
+		]
+	},
+	"info_base": {
+		"connection_string": "\"File=\"\"C:\\Users\\milut\\Documents\\StorageReceiver\"\";\"",
+		"user": "СервисРаботыСХранилищем",
+		"password": "1234",
+		"windows_auth": false
+	},
+	"git": {
+		"path": "C:\\Users\\milut\\Documents\\1C\\prj\\src\\.git",
+		"configuration_src_path": "C:\\Users\\milut\\Documents\\1C\\prj\\src",
+		"default_user_email": "defuser@mail.dev"
+	},
+	"test": {
+		"empty_cf_path": "C:\\projects\\StorageToGit\\tests\\empty_1Cv8.cf",
+		"data_path": "C:\\projects\\StorageToGit\\tests\\data\\"
+	}
+}
