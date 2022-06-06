@@ -5,7 +5,10 @@ __pycache__/**
 .idea
 .idea/**
 storage_data.json
+log.txt
 out.txt
 result.txt
 tests/data
 tests/data/**
+test/storage
+test/storage/**
