@@ -1,53 +1,8 @@
 {
-	"onec": {
-		"start_path": "\"C:\\Program Files\\1cv8\\8.3.20.1838\\bin\\1cv8.exe\"",
-		"report_convert_processor_path": "C:\\projects\\StorageToGit\\ОтчетПоХранилищуВjson.epf",
-		"result_dump_path": "C:\\projects\\StorageToGit\\tests\\data\\result.txt",
-		"log_file_path": "C:\\projects\\StorageToGit\\tests\\data\\out.txt",
-		"timeout": 30,
-		"update_timeout": 30,
-		"dump_timeout": 30
-	},
-	"storage": {
-		"path": "C:\\Storage\\TestStorage",
-		"user": "ReadOnly",
-		"password": "",
-		"report_path": "C:\\projects\\StorageToGit\\tests\\data\\storage_report.mxl",
-		"json_report_path": "C:\\projects\\StorageToGit\\tests\\data\\storage_history.json",
-		"authors": [
-			{
-				"user": "Администратор",
-				"email": "admin@test.com"
-			},
-			{
-				"user": "ReadOnle",
-				"email": "readonly@readonly.com"
-			}
-		],
-		"version_path": "C:\\projects\\StorageToGit\\tests\\data\\storage_version.json"
-	},
-	"info_base": {
-		"connection_string": "\"File=\"\"C:\\projects\\StorageToGit\\tests\\data\\StorageReceiver\"\";\"",
-		"user": "Администратор",
-		"password": "",
-		"windows_auth": false,
-		"windows_user": ""
-	},
-	"git": {
-		"path": "C:\\projects\\StorageToGit\\tests\\data\\src_test\\.git",
-		"configuration_src_path": "C:\\projects\\StorageToGit\\tests\\data\\src_test",
-		"default_user_email": "defuser@mail.dev"
-	},
-	"logging": {
-		"level": "DEBUG",
-		"path": "C:\\projects\\StorageToGit\\tests\\data\\log.txt",
-		"copy_count": 7
-	},
-	"test": {
-		"empty_cf_path": "C:\\projects\\StorageToGit\\tests\\empty_1Cv8.cf",
-		"empty_dt_path": "C:\\projects\\StorageToGit\\tests\\empty_1Cv8.dt",
-		"data_path": "C:\\projects\\StorageToGit\\tests\\data\\",
-		"base_name": "База тестирования переноса истории в git",
-		"bd_creating_timeout": 60
-	}
+	"script_config_path": "C:\\projects\\StorageToGit\\config.json",
+	"empty_cf_path": "C:\\projects\\StorageToGit\\tests\\empty_1Cv8.cf",
+	"empty_dt_path": "C:\\projects\\StorageToGit\\tests\\empty_1Cv8.dt",
+	"data_path": "C:\\projects\\StorageToGit\\tests\\data\\",
+	"base_name": "База тестирования переноса истории в git",
+	"bd_creating_timeout": 60
 }

@@ -14,3 +14,5 @@ tests/storage
 tests/storage/**
 drafts
 drafts/**
+storage_report.mxl
+storage_history.json

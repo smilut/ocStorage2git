@@ -57,9 +57,9 @@ def read_oc_log_file(log_path):
                 log_data = oc_log.read().rstrip()
             try:
                 os.remove(log_path)
-            except Exception as e:
+            except Exception:
                 logger.exception("Ошибка удаления лога 1С")
-    except Exception as e:
+    except Exception:
         log_data = "Ошибка чтения лога 1С."
         logger.exception(log_data)
 
@@ -99,6 +99,7 @@ def get_last_storage_version(conf) -> int:
     else:
         last_version = 0
 
+    logger.info("Прочитан номер версии прошлой выгрузки.", extra={"ver": last_version})
     return last_version
 
 
@@ -174,12 +175,20 @@ def create_storage_report_command(conf: dict, last_version: int) -> str:
 
 def create_storage_report(conf: dict, last_version: int):
     logger.info('Начало формирования отчета по хранилищу')
+
     onec = conf['onec']
+    storage = conf['storage']
+
+    # удаляем отчет от предыдущего запуска
+    if os.path.exists(storage['report_path']):
+        os.remove(storage['report_path'])
     command_line = create_storage_report_command(conf, last_version)
+    logger.info("Команда формирования отчета; %s", command_line)
     subprocess.run(command_line, shell=False, timeout=onec['timeout'])
     oc_msg = read_oc_log(conf)
     logger.info(oc_msg)
-    logger.info('Завершено формирование отчета по хранилищу; %s', command_line)
+    logger.info('Завершено формирование отчета по хранилищу')
+
 
 # example:
 # "c:\Program Files\1cv8\8.3.18.1289\bin\1cv8.exe" ENTERPRISE /WA- /DisableStartupDialogs
@@ -206,11 +215,18 @@ def create_storage_history_command(conf: dict) -> str:
 def create_storage_history(conf: dict):
     logger.info('Начало формирования файла истории хранилища')
     onec = conf['onec']
+    storage = conf['storage']
+
+    # удаляем историю оставшуюся от предыдущего запуска
+    if os.path.exists(storage['json_report_path']):
+        os.remove(storage['json_report_path'])
+
     command_line = create_storage_history_command(conf)
+    logger.info('Команда формирования истории; %s', command_line)
     subprocess.run(command_line, shell=False, timeout=onec['timeout'])
     oc_msg = read_oc_log(conf)
     logger.info(oc_msg)
-    logger.info('Завершено формирование файла истории хранилища; %s', command_line)
+    logger.info('Завершено формирование файла истории хранилища')
 
 
 # преобразует json файл с историей хранилища
@@ -223,7 +239,7 @@ def read_storage_history(conf: dict) -> dict:
     try:
         with open(history_path, 'r', encoding="utf_8_sig") as history_file:
             history_data = json.load(history_file)
-    except Exception as e:
+    except Exception:
         logger.exception('Ошибка чтения файла истории хранилища; {history_path}')
         raise
     logger.info('Завершено чтение файла истории хранилища')
@@ -232,7 +248,7 @@ def read_storage_history(conf: dict) -> dict:
 
 # проходит по версиям хранилища от меньшей к большей
 # и выгружает данные каждой версии из истории в git
-def scan_history(conf: dict, last_version: int):
+def scan_history(conf: dict):
     logger.info('Начало переноса истории хранилища в git')
     history_data = read_storage_history(conf)
     versions = list()
@@ -279,8 +295,9 @@ def update_to_storage_version(conf: dict, version_for_load: int):
     logger.info('Начало обновления из хранилища')
     onec = conf['onec']
     command_line = update_to_storage_version_command(conf, version_for_load)
+    logger.info('Команда обновления из хранилища; %s', command_line)
     subprocess.run(command_line, shell=False, timeout=onec['update_timeout'])
-    logger.info('Завершено обновление из хранилища; %s', command_line)
+    logger.info('Завершено обновление из хранилища')
 
 
 def dump_configuration_to_git_command(conf: dict) -> str:
@@ -334,6 +351,7 @@ def dump_configuration_to_git(conf: dict, version_for_dump: int, version_data: d
     logger.info('Начало выгрузки в git')
     onec = conf['onec']
     command_line = dump_configuration_to_git_command(conf)
+    logger.info("Команда выгрузки в git", extra={"command": command_line})
     subprocess.run(command_line, shell=False, timeout=onec['dump_timeout'])
     logger.info('Завершена выгрузка в git')
     git_commit_storage_version(conf, version_for_dump, version_data)
@@ -375,8 +393,7 @@ def convert_storage_to_git(conf):
 
         create_storage_report(conf, last_version)
         create_storage_history(conf)
-        read_storage_history(conf)
-        scan_history(conf, last_version)
+        scan_history(conf)
 
         logger.debug('Завершение скрипта')
     except Exception as e:

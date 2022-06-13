@@ -9,6 +9,7 @@ import git
 import logging
 
 
+global test_cfg
 global conf
 global logger
 
@@ -21,10 +22,10 @@ def start_logger(conf):
 def create_empty_db():
     global logger
     global conf
+    global test_cfg
 
     onec = conf['onec']
     info_base = conf['info_base']
-    test_cfg = conf['test']
 
     command_line = '{start_path} CREATEINFOBASE {connection_string} /DisableStartupDialogs ' \
                    '/AddToList  "{list_base_name}" /L ru /VL ru  ' \
@@ -42,8 +43,11 @@ def create_empty_db():
 
 
 def load_empty_cf():
+    global logger
+    global conf
+    global test_cfg
+
     onec = conf['onec']
-    test_env = conf['test']
     info_base = conf['info_base']
 
     command_line = '{start_path} DESIGNER /DisableStartupDialogs ' \
@@ -58,19 +62,22 @@ def load_empty_cf():
     # достаточно вернуться к конфигурации базы данных
     # load_params = '/RollbackCfg'
     # второй вариант загрузка преднастроенной конфигурации из файла
-    load_params = '/LoadCfg {} /UpdateDBCfg'.format(test_env['empty_cf_path'])
+    load_params = '/LoadCfg {} /UpdateDBCfg'.format(test_cfg['empty_cf_path'])
     load_command = command_line + ' ' + load_params
 
     logger.info(f'Начало загрузки конфигурации тестовой базы. {load_command}')
-    subprocess.run(load_command, shell=False, timeout=test_env['bd_creating_timeout'])
+    subprocess.run(load_command, shell=False, timeout=test_cfg['bd_creating_timeout'])
     oc_msg = ConvertStorage.read_oc_log(conf)
     logger.info(oc_msg)
     logger.info(f'Завершена загрузка конфигурации тестовой базы.')
 
 
 def load_empty_db():
+    global logger
+    global conf
+    global test_cfg
+
     onec = conf['onec']
-    test_env = conf['test']
     info_base = conf['info_base']
 
     command_line = '{start_path} DESIGNER /DisableStartupDialogs ' \
@@ -85,21 +92,22 @@ def load_empty_db():
     # достаточно вернуться к конфигурации базы данных
     # load_params = '/RollbackCfg'
     # второй вариант загрузка преднастроенной конфигурации из файла
-    load_params = '/RestoreIB {}'.format(test_env['empty_dt_path'])
+    load_params = '/RestoreIB {}'.format(test_cfg['empty_dt_path'])
     load_command = command_line + ' ' + load_params
 
     logger.info(f'Начало загрузки архива тестовой базы. {load_command}')
-    subprocess.run(load_command, shell=False, timeout=test_env['bd_creating_timeout'])
+    subprocess.run(load_command, shell=False, timeout=test_cfg['bd_creating_timeout'])
     oc_msg = ConvertStorage.read_oc_log(conf)
     logger.info(oc_msg)
     logger.info('Завершена загрузка архива тестовой базы.')
 
 
 def remove_test_data():
+    global logger
     global conf
+    global test_cfg
 
-    test_env = conf['test']
-    data_path = test_env['data_path']
+    data_path = test_cfg['data_path']
     git_cfg = conf['git']
     git_path = git_cfg['path']
     work_path = git_path[:len(git_path) - 4]
@@ -133,11 +141,15 @@ def create_test_db():
 
 
 def setUpModule():
-    global conf
     global logger
+    global conf
+    global test_cfg
 
-    conf_path = os.path.abspath("C:\\projects\\StorageToGit\\tests\\config.json")  # os.path.join(os.getcwd(), )
+    conf_path = os.path.abspath("C:\\projects\\StorageToGit\\tests\\config.json")
     with open(conf_path, mode="r", encoding="utf-8") as conf_file:
+        test_cfg = json.load(conf_file)
+
+    with open(test_cfg['script_config_path'], mode='r', encoding="utf-8") as conf_file:
         conf = json.load(conf_file)
 
     remove_test_data()
