@@ -10,5 +10,8 @@ out.txt
 result.txt
 tests/data
 tests/data/**
-test/storage
+test/storage**
+test/storage/
 test/storage/**
+drafts
+drafts/**
