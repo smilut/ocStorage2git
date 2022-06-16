@@ -1,19 +1,19 @@
 {
 	"onec": {
 		"start_path": "\"C:\\Program Files\\1cv8\\8.3.20.1838\\bin\\1cv8.exe\"",
-		"report_convert_processor_path": "C:\\projects\\StorageToGit\\ОтчетПоХранилищуВjson.epf",
+		"report_convert_processor_path": "\"C:\\projects\\StorageToGit\\ОтчетПоХранилищуВjson.epf\"",
 		"result_dump_path": "result.txt",
 		"log_file_path": "out.txt",
-		"timeout": 300,
+		"timeout": 100,
 		"update_timeout": 4800,
 		"dump_timeout": 10800
 	},
 	"storage": {
-		"path": "C:\\projects\\StorageToGit\\tests\\storage\\BIT_FINANCE",
-		"user": "Милютинский",
+		"path": "C:\\projects\\StorageToGit\\tests\\storage\\TestStorage",
+		"user": "ReadOnly",
 		"password": "",
-		"report_path": "C:\\projects\\StorageToGit\\storage_report.mxl",
-		"json_report_path": "C:\\projects\\StorageToGit\\storage_history.json",
+		"report_path": "\"C:\\projects\\StorageToGit\\storage_report.mxl\"",
+		"json_report_path": "\"C:\\projects\\StorageToGit\\storage_history.json\"",
 		"authors": [
 			{
 				"user": "Администратор",
@@ -33,13 +33,13 @@
 		"windows_auth": false
 	},
 	"git": {
-		"path": "C:\\Users\\milut\\Documents\\1C\\prj\\src\\.git",
-		"configuration_src_path": "C:\\Users\\milut\\Documents\\1C\\prj\\src",
+		"path": "C:\\Users\\milut\\Documents\\1C\\prj\\src_\\.git",
+		"configuration_src_path": "C:\\Users\\milut\\Documents\\1C\\prj\\src_",
 		"default_user_email": "defuser@mail.dev"
 	},
 	"logging": {
 		"level": "DEBUG",
 		"path": "log.txt",
-		"copy_count": 7
+		"copy_count": 30
 	}
 }

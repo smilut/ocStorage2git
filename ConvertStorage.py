@@ -4,6 +4,7 @@ import json
 import subprocess
 import git
 import logging
+from logging.handlers import TimedRotatingFileHandler
 
 from datetime import datetime
 
@@ -38,12 +39,17 @@ def init_configuration() -> dict:
 
 def start_logger(conf: dict):
     log_cfg = conf['logging']
+    LOG_PATH: str = log_cfg['path']
 
-    logging.basicConfig(filename=log_cfg['path'],
+    logging.basicConfig(filename=LOG_PATH,
                         filemode='a',
                         level=logging.getLevelName(log_cfg['level']),
                         encoding='utf-8',
                         format='%(asctime)s; %(levelname)s; %(name)s; %(message)s')
+
+    # handler = TimedRotatingFileHandler(LOG_PATH, when='midnight', backupCount=log_cfg['copy_count'])
+    # root_log = logging.getLogger('root')
+    # root_log.addHandler(handler)
 
     global logger
     logger = logging.getLogger(__name__)
@@ -64,6 +70,23 @@ def read_oc_log_file(log_path):
         logger.exception(log_data)
 
     return log_data
+
+
+# приводит базу даных в исходное состояние перед
+# запуском скрипта. Т.к. если основная конфигурация
+# не соответсвует конфигурации базы данных запрос
+# на продолжение блокирует генерацию истории хранилища
+# из отчета по хранилищу
+def restore_bd_configuration(conf):
+    global logger
+    logger.info('Начало восстановления конфигурации')
+    command_line = get_onec_command_line(conf, 'DESIGNER')
+    restore_params = ' /RollbackCfg'
+    restore_command =  command_line + restore_params
+    logger.info('Команда восстановления %s', restore_command)
+    subprocess.run(restore_command, shell=False, timeout=conf['onec']['timeout'])
+    logger.info('Завершено восстановление конфигурации')
+    pass
 
 
 # Читает лог выполнения операции при запуске 1С
@@ -202,11 +225,15 @@ def create_storage_history_command(conf: dict) -> str:
     onec = conf['onec']
     storage = conf['storage']
 
+    args_for_processor = '{report_path};{history_path}'\
+        .format(report_path=storage['report_path'],
+                history_path=storage['json_report_path'])\
+        .replace('"', '""')
+
     convert_param_str = '/Execute {converter_path} ' \
-                        '/C"{report_path};{history_path}" ' \
+                        '/C "{args}" ' \
                         ' '.format(converter_path=onec['report_convert_processor_path'],
-                                   report_path=storage['report_path'],
-                                   history_path=storage['json_report_path'])
+                                   args=args_for_processor)
 
     convert_report_command = command_line + ' ' + convert_param_str
     return convert_report_command
@@ -235,7 +262,9 @@ def create_storage_history(conf: dict):
 # истории хранилища в git
 def read_storage_history(conf: dict) -> dict:
     logger.info('Начало чтения файла истории хранилища')
-    history_path = conf['storage']['json_report_path']
+    # корректируем строку пути, т.к. для 1С нужны кавычки, а для
+    # python они вызывают ошибку
+    history_path: str = (conf['storage']['json_report_path']).replace('"', '')
     try:
         with open(history_path, 'r', encoding="utf_8_sig") as history_file:
             history_data = json.load(history_file)
@@ -304,7 +333,7 @@ def dump_configuration_to_git_command(conf: dict) -> str:
     command_line = get_onec_command_line(conf, 'DESIGNER')
     git_options = conf['git']
 
-    dump_param_str = '/DumpConfigToFiles {} '.format(git_options['configuration_src_path'])
+    dump_param_str = '/DumpConfigToFiles {}'.format(git_options['configuration_src_path'])
 
     dump_command = command_line + ' ' + dump_param_str
     return dump_command
@@ -338,7 +367,7 @@ def get_commit_label(version_for_dump: int, version_data: dict) -> str:
     if len(added_obj) > 512:
         added_obj = added_obj[:512] + '...'
 
-    label = f'storage ver:{version_for_dump}; {ver_label}: {comment}\n\n' \
+    label = f'storage ver:{version_for_dump}; {ver_label}; \n {comment}\n\n' \
             f'{added_obj} {changed_obj}\n'
     logger.info('Сообщение для git commit; %s', label)
 
@@ -351,15 +380,16 @@ def dump_configuration_to_git(conf: dict, version_for_dump: int, version_data: d
     logger.info('Начало выгрузки в git')
     onec = conf['onec']
     command_line = dump_configuration_to_git_command(conf)
-    logger.info("Команда выгрузки в git", extra={"command": command_line})
+    logger.info("Команда выгрузки в git; %s", command_line)
     subprocess.run(command_line, shell=False, timeout=onec['dump_timeout'])
     logger.info('Завершена выгрузка в git')
+    logger.info('Начало git commit')
     git_commit_storage_version(conf, version_for_dump, version_data)
-    logger.info('Git commit - завершен; %s', command_line)
+    logger.info('git commit - завершен')
 
 
 def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: dict):
-    logger.info('Начало подготовки git commit')
+    logger.info('Начало git add')
     git_options = conf['git']
     repo = git.Repo(git_options['path'], search_parent_directories=False)
     repo.index.add('*')
@@ -390,7 +420,7 @@ def convert_storage_to_git(conf):
         last_version = get_last_storage_version(conf)
 
         logger.info('Запуск скрипта')
-
+        restore_bd_configuration(conf)
         create_storage_report(conf, last_version)
         create_storage_history(conf)
         scan_history(conf)
