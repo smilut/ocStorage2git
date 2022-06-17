@@ -47,11 +47,11 @@ def start_logger(conf: dict):
                         encoding='utf-8',
                         format='%(asctime)s; %(levelname)s; %(name)s; %(message)s')
 
-    # handler = TimedRotatingFileHandler(LOG_PATH, when='midnight', backupCount=log_cfg['copy_count'])
-    # root_log = logging.getLogger('root')
-    # root_log.addHandler(handler)
-
     global logger
+    handler = TimedRotatingFileHandler(LOG_PATH, when='S', backupCount=log_cfg['copy_count'], encoding='utf-8')
+    root_log = logging.getLogger('root')
+    root_log.addHandler(handler)
+
     logger = logging.getLogger(__name__)
 
 
@@ -82,9 +82,11 @@ def restore_bd_configuration(conf):
     logger.info('Начало восстановления конфигурации')
     command_line = get_onec_command_line(conf, 'DESIGNER')
     restore_params = ' /RollbackCfg'
-    restore_command =  command_line + restore_params
+    restore_command = command_line + restore_params
     logger.info('Команда восстановления %s', restore_command)
     subprocess.run(restore_command, shell=False, timeout=conf['onec']['timeout'])
+    oc_msg = read_oc_log(conf)
+    logger.info(oc_msg)
     logger.info('Завершено восстановление конфигурации')
     pass
 
@@ -114,6 +116,8 @@ def get_storage_data_path(conf) -> str:
 # прочитать из хранилища.
 # продолжать чтение надо с версии последняя+1
 def get_last_storage_version(conf) -> int:
+    global logger
+
     storage_data_path = get_storage_data_path(conf)
     if os.path.exists(storage_data_path):
         with open(storage_data_path, mode='r') as storage_data_file:
@@ -122,7 +126,7 @@ def get_last_storage_version(conf) -> int:
     else:
         last_version = 0
 
-    logger.info("Прочитан номер версии прошлой выгрузки.", extra={"ver": last_version})
+    logger.info("Прочитан номер версии прошлой выгрузки; %s", last_version)
     return last_version
 
 
@@ -149,14 +153,15 @@ def get_onec_command_line(conf, start_type: str) -> str:
             password = '/P{}'.format(info_base['password'])
 
     onec_command_line = '{start_path} {start_type} {wa_flag} /DisableStartupDialogs {user_name} ' \
-                        '{passwd} /L ru /VL ru /IBConnectionString {connection_string} ' \
-                        '/Out {log_path} /DumpResult {result_path}' \
+                        '{passwd} /L ru /VL ru /IBConnectionString "{connection_string}" ' \
+                        '/Out "{log_path}" /DumpResult "{result_path}"' \
                         ' '.format(start_path=onec['start_path'],
                                    start_type=start_type,
                                    wa_flag=wa,
                                    user_name=user,
                                    passwd=password,
-                                   connection_string=info_base['connection_string'],
+                                   # 1C требует двойных кавычек внутри строки
+                                   connection_string=info_base['connection_string'].replace('"', '""'),
                                    log_path=onec['log_file_path'],
                                    result_path=onec['result_dump_path'])
     return onec_command_line
@@ -183,9 +188,9 @@ def create_storage_report_command(conf: dict, last_version: int) -> str:
 
     start_version = last_version + 1
 
-    report_param_str = '/ConfigurationRepositoryF {storage_path} ' \
+    report_param_str = '/ConfigurationRepositoryF "{storage_path}" ' \
                        '/ConfigurationRepositoryN {storage_user} {storage_passwd_flag} ' \
-                       '/ConfigurationRepositoryReport {report_path} -NBegin {ver_num} ' \
+                       '/ConfigurationRepositoryReport "{report_path}" -NBegin {ver_num} ' \
                        ' '.format(storage_path=storage['path'],
                                   storage_user=storage['user'],
                                   storage_passwd_flag=passwd_flag,
@@ -225,12 +230,11 @@ def create_storage_history_command(conf: dict) -> str:
     onec = conf['onec']
     storage = conf['storage']
 
-    args_for_processor = '{report_path};{history_path}'\
+    args_for_processor = '""{report_path}"";""{history_path}""'\
         .format(report_path=storage['report_path'],
-                history_path=storage['json_report_path'])\
-        .replace('"', '""')
+                history_path=storage['json_report_path'])
 
-    convert_param_str = '/Execute {converter_path} ' \
+    convert_param_str = '/Execute "{converter_path}" ' \
                         '/C "{args}" ' \
                         ' '.format(converter_path=onec['report_convert_processor_path'],
                                    args=args_for_processor)
@@ -264,12 +268,12 @@ def read_storage_history(conf: dict) -> dict:
     logger.info('Начало чтения файла истории хранилища')
     # корректируем строку пути, т.к. для 1С нужны кавычки, а для
     # python они вызывают ошибку
-    history_path: str = (conf['storage']['json_report_path']).replace('"', '')
+    history_path: str = (conf['storage']['json_report_path'])
     try:
         with open(history_path, 'r', encoding="utf_8_sig") as history_file:
             history_data = json.load(history_file)
     except Exception:
-        logger.exception('Ошибка чтения файла истории хранилища; {history_path}')
+        logger.exception('Ошибка чтения файла истории хранилища; %s', history_path)
         raise
     logger.info('Завершено чтение файла истории хранилища')
     return history_data
@@ -306,7 +310,7 @@ def update_to_storage_version_command(conf: dict, version_for_load: int):
     else:
         passwd_flag = storage['password']
 
-    update_param_str = '/ConfigurationRepositoryF {storage_path} ' \
+    update_param_str = '/ConfigurationRepositoryF "{storage_path}" ' \
                        '/ConfigurationRepositoryN {storage_user} {storage_passwd_flag} ' \
                        '/ConfigurationRepositoryUpdateCfg -force -v {ver_num} ' \
                        ' '.format(storage_path=storage['path'],
@@ -333,7 +337,7 @@ def dump_configuration_to_git_command(conf: dict) -> str:
     command_line = get_onec_command_line(conf, 'DESIGNER')
     git_options = conf['git']
 
-    dump_param_str = '/DumpConfigToFiles {}'.format(git_options['configuration_src_path'])
+    dump_param_str = '/DumpConfigToFiles "{}"'.format(git_options['configuration_src_path'])
 
     dump_command = command_line + ' ' + dump_param_str
     return dump_command
@@ -382,6 +386,8 @@ def dump_configuration_to_git(conf: dict, version_for_dump: int, version_data: d
     command_line = dump_configuration_to_git_command(conf)
     logger.info("Команда выгрузки в git; %s", command_line)
     subprocess.run(command_line, shell=False, timeout=onec['dump_timeout'])
+    oc_msg = read_oc_log(conf)
+    logger.info(oc_msg)
     logger.info('Завершена выгрузка в git')
     logger.info('Начало git commit')
     git_commit_storage_version(conf, version_for_dump, version_data)
