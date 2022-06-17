@@ -22,5 +22,7 @@ log.txt
 out.txt
 result.txt
 storage_history.json
+config.json
 storage_report.mxl
 storage_version.json
+

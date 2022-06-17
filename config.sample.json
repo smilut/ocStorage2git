@@ -1,0 +1,45 @@
+{
+	"onec": {
+		"start_path": "C:\\Program Files\\1cv8\\8.3.20.1838\\bin\\1cv8.exe",
+		"report_convert_processor_path": "C:\\Users\\smilyutinskiy\\OneDrive - simple.ru\\Документы\\Git for sonar\\Storage2git\\ОтчетПоХранилищуВjson.epf",
+		"result_dump_path": "result.txt",
+		"log_file_path": "out.txt",
+		"timeout": 1200,
+		"update_timeout": 4800,
+		"dump_timeout": 10800
+	},
+	"storage": {
+		"path": "tcp://1CTST2/BIT_FINANCE",
+		"user": "Милютинский",
+		"password": "",
+		"report_path": "C:\\Users\\smilyutinskiy\\OneDrive - simple.ru\\Документы\\Git for sonar\\Storage2git\\storage_report.mxl",
+		"json_report_path": "C:\\Users\\smilyutinskiy\\OneDrive - simple.ru\\Документы\\Git for sonar\\Storage2git\\storage_history.json",
+		"authors": [
+			{
+				"user": "Администратор",
+				"email": "admin@test.com"
+			},
+			{
+				"user": "ReadOnle",
+				"email": "readonly@readonly.com"
+			}
+		],
+		"version_path": "C:\\Users\\smilyutinskiy\\OneDrive - simple.ru\\Документы\\Git for sonar\\Storage2git\\storage_version.json"
+	},
+	"info_base": {
+		"connection_string": "Srvr=\"S1CTST1:2141\";Ref=\"DEV_GIT_CONVERTER_MILYUTINSKIY\";",
+		"user": "Администратор",
+		"password": "",
+		"windows_auth": false
+	},
+	"git": {
+		"path": "C:\\Users\\smilyutinskiy\\OneDrive - simple.ru\\Документы\\Git for sonar\\src_\\.git",
+		"configuration_src_path": "C:\\Users\\smilyutinskiy\\OneDrive - simple.ru\\Документы\\Git for sonar\\src_",
+		"default_user_email": "defuser@mail.dev"
+	},
+	"logging": {
+		"level": "DEBUG",
+		"path": "log.txt",
+		"copy_count": 7
+	}
+}
