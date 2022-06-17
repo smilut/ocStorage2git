@@ -48,7 +48,7 @@ def start_logger(conf: dict):
                         format='%(asctime)s; %(levelname)s; %(name)s; %(message)s')
 
     global logger
-    handler = TimedRotatingFileHandler(LOG_PATH, when='S', backupCount=log_cfg['copy_count'], encoding='utf-8')
+    handler = TimedRotatingFileHandler(LOG_PATH, when='midnight', backupCount=log_cfg['copy_count'], encoding='utf-8')
     root_log = logging.getLogger('root')
     root_log.addHandler(handler)
 
