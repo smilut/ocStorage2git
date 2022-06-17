@@ -16,3 +16,5 @@ drafts
 drafts/**
 storage_report.mxl
 storage_history.json
+storage_version.json
+congig.json
