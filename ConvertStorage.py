@@ -49,11 +49,9 @@ def start_logger(conf: dict):
 
     global logger
     handler = TimedRotatingFileHandler(LOG_PATH, when='midnight', backupCount=log_cfg['copy_count'], encoding='utf-8')
-    root_log = logging.getLogger('root')
-    root_log.addHandler(handler)
 
     logger = logging.getLogger(__name__)
-
+    logger.addHandler(handler)
 
 def read_oc_log_file(log_path):
     log_data = ''
