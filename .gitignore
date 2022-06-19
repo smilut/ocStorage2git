@@ -18,7 +18,7 @@ tests/data/**
 tests/storage
 tests/storage/**
 
-log.txt
+log.txt**
 out.txt
 result.txt
 storage_history.json
