@@ -52,7 +52,7 @@ def start_logger(conf: dict):
                                            backupCount=log_cfg['copy_count'],
                                            encoding='utf-8')     
 
-    handler.setFormatter(logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(message)s; %(info)s'))
+    handler.setFormatter(logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(message)s'))
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.getLevelName(log_cfg['level']))
     logger.addHandler(handler)
