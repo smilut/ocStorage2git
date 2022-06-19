@@ -5,7 +5,6 @@ import subprocess
 import git
 import logging
 from logging.handlers import TimedRotatingFileHandler
-
 from datetime import datetime
 
 global logger
@@ -41,17 +40,23 @@ def start_logger(conf: dict):
     log_cfg = conf['logging']
     LOG_PATH: str = log_cfg['path']
 
-    logging.basicConfig(filename=LOG_PATH,
-                        filemode='a',
-                        level=logging.getLevelName(log_cfg['level']),
-                        encoding='utf-8',
-                        format='%(asctime)s; %(levelname)s; %(name)s; %(message)s')
-
     global logger
-    handler = TimedRotatingFileHandler(LOG_PATH, when='midnight', backupCount=log_cfg['copy_count'], encoding='utf-8')
 
+    rotate_time = log_cfg['rotate_time']
+    rotate_interval = log_cfg['rotate_interval']
+    if rotate_time == 'midnight':
+        handler = TimedRotatingFileHandler(LOG_PATH, when=rotate_time, backupCount=log_cfg['copy_count'],
+                                           encoding='utf-8')
+    else:
+        handler = TimedRotatingFileHandler(LOG_PATH, when=rotate_time, interval=rotate_interval,
+                                           backupCount=log_cfg['copy_count'],
+                                           encoding='utf-8')     
+
+    handler.setFormatter(logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(message)s; %(info)s'))
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.getLevelName(log_cfg['level']))
     logger.addHandler(handler)
+
 
 def read_oc_log_file(log_path):
     log_data = ''
