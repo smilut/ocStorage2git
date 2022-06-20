@@ -10,6 +10,12 @@ from datetime import datetime
 global logger
 
 
+class OCcommand:
+    """Структура описания параметров команды 1С"""
+    command_line: str
+    time_out: int
+    desc: str
+
 def init_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--conf", help="set path to config file", type=str, default="")
@@ -52,27 +58,12 @@ def start_logger(conf: dict):
                                            backupCount=log_cfg['copy_count'],
                                            encoding='utf-8')     
 
-    handler.setFormatter(logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(message)s'))
+    handler.setFormatter(logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(message)s; %(desc)s',
+                                           defaults={"desc": ''}))
+
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.getLevelName(log_cfg['level']))
     logger.addHandler(handler)
-
-
-def read_oc_log_file(log_path):
-    log_data = ''
-    try:
-        if os.path.exists(log_path):
-            with open(log_path, 'r', encoding="utf_8_sig") as oc_log:
-                log_data = oc_log.read().rstrip()
-            try:
-                os.remove(log_path)
-            except Exception:
-                logger.exception("Ошибка удаления лога 1С")
-    except Exception:
-        log_data = "Ошибка чтения лога 1С."
-        logger.exception(log_data)
-
-    return log_data
 
 
 # приводит базу даных в исходное состояние перед
@@ -94,21 +85,55 @@ def restore_bd_configuration(conf):
     pass
 
 
+def execute_command(conf: dict, oc_command: OCcommand):
+    logger.info(f'Начало: {oc_command.desc}')
+    logger.info("Команда: %s", oc_command.command_line)
+    subprocess.run(oc_command.command_line, shell=False, timeout=oc_command.time_out)
+    oc_msg = read_oc_log(conf)
+    oc_res = read_oc_result(conf)
+    logger.info(oc_msg)
+    logger.info(f'Завершено: {oc_command.desc}')
+    if oc_res != 0:
+        raise ValueError('Выполненение команды завершено с ошибкой')
+
+
+def read_oc_log_file(log_path):
+    log_data = ''
+    try:
+        if os.path.exists(log_path):
+            with open(log_path, 'r', encoding="utf_8_sig") as oc_log:
+                log_data = oc_log.read().rstrip()
+            try:
+                os.remove(log_path)
+            except Exception:
+                logger.exception("Ошибка удаления лога 1С")
+    except Exception:
+        log_data = "Ошибка чтения лога 1С."
+        logger.exception(log_data)
+
+    return log_data
+
+
 # Читает лог выполнения операции при запуске 1С
 # в пакетном режиме
 # Проблема в том, что данный файл формируется не всегда.
 def read_oc_log(conf: dict) -> str:
     log_path = conf['onec']['log_file_path']
-    return read_oc_log_file(log_path)
+    oc_msg = read_oc_log_file(log_path)
+    return f'Сообщение 1С: {oc_msg}'
 
 
 # Читает результат выполнения операции при запуске 1С
 # в пакетном режиме. В файле либо 0 - успех
 # либо 1 - ошибка.
 # Проблема в том, что данный файл формируется не всегда.
-def read_oc_result(conf: dict) -> str:
+def read_oc_result(conf: dict) -> int:
     log_path = conf['onec']['result_dump_path']
-    return read_oc_log_file(log_path)
+    oc_result = read_oc_log_file(log_path)
+    if oc_result != '1':
+        return 0
+    else:
+        return 1
 
 
 def get_storage_data_path(conf) -> str:
@@ -180,7 +205,10 @@ def get_onec_command_line(conf, start_type: str) -> str:
 # /ConfigurationRepositoryN ReadOnly
 # /ConfigurationRepositoryReport “C:\Documents\1C\prj\reports\storage_report.mxl”
 # -NBegin 1
-def create_storage_report_command(conf: dict, last_version: int) -> str:
+def create_storage_report_command(conf: dict, last_version: int) -> OCcommand:
+    onec = conf['onec']
+    storage = conf['storage']
+
     command_line = get_onec_command_line(conf, 'DESIGNER')
 
     storage = conf['storage']
@@ -200,25 +228,22 @@ def create_storage_report_command(conf: dict, last_version: int) -> str:
                                   report_path=storage['report_path'],
                                   ver_num=start_version)
 
-    create_report_command = command_line + ' ' + report_param_str
-    return create_report_command
+    oc_command = OCcommand()
+    oc_command.command_line = command_line + ' ' + report_param_str
+    oc_command.desc = 'Формирование отчета по хранилищу'
+    oc_command.time_out = onec['timeout']
+    return oc_command
 
 
 def create_storage_report(conf: dict, last_version: int):
-    logger.info('Начало формирования отчета по хранилищу')
-
-    onec = conf['onec']
     storage = conf['storage']
 
     # удаляем отчет от предыдущего запуска
     if os.path.exists(storage['report_path']):
         os.remove(storage['report_path'])
-    command_line = create_storage_report_command(conf, last_version)
-    logger.info("Команда формирования отчета; %s", command_line)
-    subprocess.run(command_line, shell=False, timeout=onec['timeout'])
-    oc_msg = read_oc_log(conf)
-    logger.info(oc_msg)
-    logger.info('Завершено формирование отчета по хранилищу')
+
+    oc_command = create_storage_report_command(conf, last_version)
+    execute_command(conf, oc_command)
 
 
 # example:
@@ -228,7 +253,7 @@ def create_storage_report(conf: dict, last_version: int):
 # /Execute "C:\1C\Работа с хранилищем\ОтчетПоХранилищуВjson.epf"
 # /C "C:\1C\Работа с хранилищем\storage_report003.mxl;C:\1C\Работа с хранилищем\storage_history.json"
 # /Out "C:\Users\milut\Documents\1C\log.txt" -NoTruncate
-def create_storage_history_command(conf: dict) -> str:
+def create_storage_history_command(conf: dict) -> OCcommand:
     command_line = get_onec_command_line(conf, 'ENTERPRISE')
     onec = conf['onec']
     storage = conf['storage']
@@ -242,25 +267,22 @@ def create_storage_history_command(conf: dict) -> str:
                         ' '.format(converter_path=onec['report_convert_processor_path'],
                                    args=args_for_processor)
 
-    convert_report_command = command_line + ' ' + convert_param_str
-    return convert_report_command
+    oc_command = OCcommand()
+    oc_command.command_line = command_line + ' ' + convert_param_str
+    oc_command.desc = 'Формирование истории хранилища'
+    oc_command.time_out = onec['timeout']
+    return oc_command
 
 
 def create_storage_history(conf: dict):
-    logger.info('Начало формирования файла истории хранилища')
-    onec = conf['onec']
     storage = conf['storage']
 
     # удаляем историю оставшуюся от предыдущего запуска
     if os.path.exists(storage['json_report_path']):
         os.remove(storage['json_report_path'])
 
-    command_line = create_storage_history_command(conf)
-    logger.info('Команда формирования истории; %s', command_line)
-    subprocess.run(command_line, shell=False, timeout=onec['timeout'])
-    oc_msg = read_oc_log(conf)
-    logger.info(oc_msg)
-    logger.info('Завершено формирование файла истории хранилища')
+    oc_command = create_storage_history_command(conf)
+    execute_command(conf, oc_command)
 
 
 # преобразует json файл с историей хранилища
@@ -304,10 +326,12 @@ def scan_history(conf: dict):
     logger.info('Завершен перенос истории хранилища в git')
 
 
-def update_to_storage_version_command(conf: dict, version_for_load: int):
+def update_to_storage_version_command(conf: dict, version_for_load: int) -> OCcommand:
+    onec = conf['onec']
+    storage = conf['storage']
+
     command_line = get_onec_command_line(conf, 'DESIGNER')
 
-    storage = conf['storage']
     if storage['password'] == "":
         passwd_flag = ""
     else:
@@ -321,29 +345,32 @@ def update_to_storage_version_command(conf: dict, version_for_load: int):
                                   storage_passwd_flag=passwd_flag,
                                   ver_num=version_for_load)
 
-    update_command = command_line + ' ' + update_param_str
-    return update_command
+    oc_command = OCcommand()
+    oc_command.command_line = command_line + ' ' + update_param_str
+    oc_command.desc = 'Обновление из хранилища'
+    oc_command.time_out = onec['update_timeout']
+    return oc_command
 
 
 # обновляет основную конфигурацию до указанной версии
 # из хранилища
 def update_to_storage_version(conf: dict, version_for_load: int):
-    logger.info('Начало обновления из хранилища')
+    oc_command = update_to_storage_version_command(conf, version_for_load)
+    execute_command(conf, oc_command)
+
+
+def dump_configuration_to_git_command(conf: dict) -> OCcommand:
     onec = conf['onec']
-    command_line = update_to_storage_version_command(conf, version_for_load)
-    logger.info('Команда обновления из хранилища; %s', command_line)
-    subprocess.run(command_line, shell=False, timeout=onec['update_timeout'])
-    logger.info('Завершено обновление из хранилища')
-
-
-def dump_configuration_to_git_command(conf: dict) -> str:
-    command_line = get_onec_command_line(conf, 'DESIGNER')
     git_options = conf['git']
+    command_line = get_onec_command_line(conf, 'DESIGNER')
 
     dump_param_str = '/DumpConfigToFiles "{}"'.format(git_options['configuration_src_path'])
 
-    dump_command = command_line + ' ' + dump_param_str
-    return dump_command
+    oc_command = OCcommand()
+    oc_command.command_line = command_line + ' ' + dump_param_str
+    oc_command.desc = 'Выгрузка в git'
+    oc_command.time_out = onec['dump_timeout']
+    return oc_command
 
 
 def git_author_for_version(conf: dict, author: str) -> str:
@@ -384,14 +411,9 @@ def get_commit_label(version_for_dump: int, version_data: dict) -> str:
 # выгружает основную конфигурацию в git и выполняет commit
 # от имени пользователя поместившего версию в хранилище
 def dump_configuration_to_git(conf: dict, version_for_dump: int, version_data: dict):
-    logger.info('Начало выгрузки в git')
-    onec = conf['onec']
-    command_line = dump_configuration_to_git_command(conf)
-    logger.info("Команда выгрузки в git; %s", command_line)
-    subprocess.run(command_line, shell=False, timeout=onec['dump_timeout'])
-    oc_msg = read_oc_log(conf)
-    logger.info(oc_msg)
-    logger.info('Завершена выгрузка в git')
+    oc_command = dump_configuration_to_git_command(conf)
+    execute_command(conf, oc_command)
+
     logger.info('Начало git commit')
     git_commit_storage_version(conf, version_for_dump, version_data)
     logger.info('git commit - завершен')
