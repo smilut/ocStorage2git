@@ -8,6 +8,7 @@ from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
 
 global logger
+global first_dump
 
 
 class OCcommand:
@@ -66,37 +67,6 @@ def start_logger(conf: dict):
     logger.addHandler(handler)
 
 
-# приводит базу даных в исходное состояние перед
-# запуском скрипта. Т.к. если основная конфигурация
-# не соответсвует конфигурации базы данных запрос
-# на продолжение блокирует генерацию истории хранилища
-# из отчета по хранилищу
-def restore_bd_configuration(conf):
-    global logger
-    logger.info('Начало восстановления конфигурации')
-    command_line = get_onec_command_line(conf, 'DESIGNER')
-    restore_params = ' /RollbackCfg'
-    restore_command = command_line + restore_params
-    logger.info('Команда восстановления %s', restore_command)
-    subprocess.run(restore_command, shell=False, timeout=conf['onec']['timeout'])
-    oc_msg = read_oc_log(conf)
-    logger.info(oc_msg)
-    logger.info('Завершено восстановление конфигурации')
-    pass
-
-
-def execute_command(conf: dict, oc_command: OCcommand):
-    logger.info(f'Начало: {oc_command.desc}')
-    logger.info("Команда: %s", oc_command.command_line)
-    subprocess.run(oc_command.command_line, shell=False, timeout=oc_command.time_out)
-    oc_msg = read_oc_log(conf)
-    oc_res = read_oc_result(conf)
-    logger.info(oc_msg)
-    logger.info(f'Завершено: {oc_command.desc}')
-    if oc_res != 0:
-        raise ValueError('Выполненение команды завершено с ошибкой')
-
-
 def read_oc_log_file(log_path):
     log_data = ''
     try:
@@ -134,6 +104,39 @@ def read_oc_result(conf: dict) -> int:
         return 0
     else:
         return 1
+
+
+def execute_command(conf: dict, oc_command: OCcommand):
+    logger.info(f'Начало: {oc_command.desc}')
+    logger.info("Команда: %s", oc_command.command_line)
+    subprocess.run(oc_command.command_line, shell=False, timeout=oc_command.time_out)
+    oc_msg = read_oc_log(conf)
+    oc_res = read_oc_result(conf)
+    logger.info(oc_msg)
+    logger.info(f'Завершено: {oc_command.desc}')
+    if oc_res != 0:
+        raise ValueError('Выполненение команды завершено с ошибкой')
+
+
+# приводит базу даных в исходное состояние перед
+# запуском скрипта. Т.к. если основная конфигурация
+# не соответсвует конфигурации базы данных запрос
+# на продолжение блокирует генерацию истории хранилища
+# из отчета по хранилищу
+def restore_bd_configuration(conf):
+    global logger
+    global first_dump
+
+    command_line = get_onec_command_line(conf, 'DESIGNER')
+    restore_params = ' /RollbackCfg'
+
+    oc_command = OCcommand()
+    oc_command.command_line = command_line + restore_params
+    oc_command.desc = 'Восстановление конфигурации'
+    oc_command.time_out = conf['onec']['timeout']
+
+    execute_command(conf, oc_command)
+    first_dump = True
 
 
 def get_storage_data_path(conf) -> str:
@@ -307,6 +310,12 @@ def read_storage_history(conf: dict) -> dict:
 # проходит по версиям хранилища от меньшей к большей
 # и выгружает данные каждой версии из истории в git
 def scan_history(conf: dict):
+    global first_dump
+
+    # при каждом запуске скрипта промежуточная конфигурация возвращается
+    # к конфе базы данных, поэтому выгружать в файлы надо всю загруженную
+    # из хранилища конфигурацию
+    first_dump = True
     logger.info('Начало переноса истории хранилища в git')
     history_data = read_storage_history(conf)
     versions = list()
@@ -319,6 +328,9 @@ def scan_history(conf: dict):
         version_data = history_data[str(ver)]
         update_to_storage_version(conf, ver)
         dump_configuration_to_git(conf, ver, version_data)
+        # т.к. очередная версия хранилища уже загружена в основную конфигурацию,
+        # то следующая выгрузка в гит может быть инкрементной
+        first_dump = False
         last_version = ver
         save_last_version(conf, last_version)
         logger.info(f'Завершена обработка версии {ver}')
@@ -360,6 +372,8 @@ def update_to_storage_version(conf: dict, version_for_load: int):
 
 
 def dump_configuration_to_git_command(conf: dict) -> OCcommand:
+    global first_dump
+
     onec = conf['onec']
     git_options = conf['git']
     command_line = get_onec_command_line(conf, 'DESIGNER')
@@ -367,7 +381,10 @@ def dump_configuration_to_git_command(conf: dict) -> OCcommand:
     dump_param_str = '/DumpConfigToFiles "{}"'.format(git_options['configuration_src_path'])
 
     oc_command = OCcommand()
-    oc_command.command_line = command_line + ' ' + dump_param_str
+    if first_dump:
+        oc_command.command_line = command_line + ' ' + dump_param_str
+    else:
+        oc_command.command_line = command_line + ' ' + dump_param_str + ' -update'
     oc_command.desc = 'Выгрузка в git'
     oc_command.time_out = onec['dump_timeout']
     return oc_command
@@ -411,6 +428,8 @@ def get_commit_label(version_for_dump: int, version_data: dict) -> str:
 # выгружает основную конфигурацию в git и выполняет commit
 # от имени пользователя поместившего версию в хранилище
 def dump_configuration_to_git(conf: dict, version_for_dump: int, version_data: dict):
+    global first_dump
+
     oc_command = dump_configuration_to_git_command(conf)
     execute_command(conf, oc_command)
 
