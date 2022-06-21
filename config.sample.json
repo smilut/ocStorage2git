@@ -48,5 +48,9 @@
 		"rotate_time": "midnight",
 		"rotate_interval": 1,
 		"copy_count": 5
+	},
+	"script": {
+		"terminate": false,
+		"terminate_after": "20:00"
 	}
 }

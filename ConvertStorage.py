@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import json
 import subprocess
 import git
@@ -307,6 +308,18 @@ def read_storage_history(conf: dict) -> dict:
     return history_data
 
 
+def terminate_script(conf: dict):
+    global logger
+    script_opt = conf['script']
+
+    if script_opt['terminate']:
+        terminate_time = datetime.strptime(script_opt['terminate_after'], "%H:%M").time()
+        cur_time = datetime.now().time()
+        if cur_time > terminate_time:
+            logger.info('Выполнение скрипта остановлено по расписанию')
+            sys.exit()
+
+
 # проходит по версиям хранилища от меньшей к большей
 # и выгружает данные каждой версии из истории в git
 def scan_history(conf: dict):
@@ -334,6 +347,7 @@ def scan_history(conf: dict):
         last_version = ver
         save_last_version(conf, last_version)
         logger.info(f'Завершена обработка версии {ver}')
+        terminate_script(conf)
 
     logger.info('Завершен перенос истории хранилища в git')
 
