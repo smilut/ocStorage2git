@@ -40,7 +40,8 @@
 	"git": {
 		"path": "C:\\projects\\StorageToGit\\tests\\storage\\test spaces\\src_\\.git",
 		"configuration_src_path": "C:\\projects\\StorageToGit\\tests\\storage\\test spaces\\src_",
-		"default_user_email": "defuser@mail.dev"
+		"default_user_email": "defuser@mail.dev",
+		"push_timeout": 1200
 	},
 	"logging": {
 		"level": "DEBUG",
@@ -51,6 +52,7 @@
 	},
 	"script": {
 		"terminate": false,
-		"terminate_after": "20:00"
+		"terminate_after": "20:00",
+		"push_after_convertation": true
 	}
 }

@@ -317,8 +317,34 @@ def terminate_script(conf: dict):
         cur_time = datetime.now().time()
         if cur_time > terminate_time:
             logger.info('Выполнение скрипта остановлено по расписанию')
+            git_push(conf)
             sys.exit()
 
+
+def git_push(conf: dict):
+    global logger
+
+    script_opt = conf['script']
+
+    if script_opt['push_after_convertation']:
+        logger.info('Начало git push')
+
+        git_options = conf['git']
+        repo = git.Repo(git_options['path'], search_parent_directories=False)
+        try:
+            origin = repo.remotes['origin']
+        except IndexError as ie:
+            logger.exception("Ошибка получения удаленного репозитария")
+            raise ie
+
+        # for linux only
+        # origin.push(kill_after_timeout=git_options['push_timeout'])
+        origin.push()
+        logger.info('Выполнение git push завершено')
+    else:
+        logger.info('Выполнение git push отключено в файле настроек скрипта')
+
+    pass
 
 # проходит по версиям хранилища от меньшей к большей
 # и выгружает данные каждой версии из истории в git
@@ -349,6 +375,7 @@ def scan_history(conf: dict):
         logger.info(f'Завершена обработка версии {ver}')
         terminate_script(conf)
 
+    git_push(conf)
     logger.info('Завершен перенос истории хранилища в git')
 
 
@@ -500,4 +527,5 @@ if __name__ == '__main__':
     start_logger(conf)
     convert_storage_to_git(conf)
 
+    # доп.строка для остановки при отладке
     pass
