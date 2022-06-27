@@ -116,7 +116,7 @@ def execute_command(conf: dict, oc_command: OCcommand):
     logger.info(oc_msg)
     logger.info(f'Завершено: {oc_command.desc}')
     if oc_res != 0:
-        raise ValueError('Выполненение команды завершено с ошибкой')
+        raise ValueError(f'Выполненение:{oc_command.desc}; команда:{oc_command.command_line}, завершено с ошибкой ')
 
 
 # приводит базу даных в исходное состояние перед
