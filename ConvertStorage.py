@@ -93,7 +93,7 @@ def read_oc_log_file(log_path):
 def read_oc_log(conf: dict) -> str:
     log_path = conf['onec']['log_file_path']
     oc_msg = read_oc_log_file(log_path)
-    return f'Сообщение 1С: {oc_msg}'
+    return oc_msg
 
 
 # Читает результат выполнения операции при запуске 1С
@@ -115,7 +115,7 @@ def execute_command(conf: dict, oc_command: OCcommand):
     subprocess.run(oc_command.command_line, shell=False, timeout=oc_command.time_out)
     oc_msg = read_oc_log(conf)
     oc_res = read_oc_result(conf)
-    logger.info(oc_msg)
+    logger.info(f'Сообщение 1С: {oc_msg}')
     logger.info(f'Завершено: {oc_command.desc}')
     if oc_res != 0 or oc_msg != oc_command.successful_msg:
         err_desc = f'Выполненение:{oc_command.desc}; команда:{oc_command.command_line}, завершено с ошибкой '
