@@ -17,6 +17,8 @@ class OCcommand:
     command_line: str
     time_out: int
     desc: str
+    successful_msg: str
+
 
 def init_args():
     parser = argparse.ArgumentParser()
@@ -115,7 +117,7 @@ def execute_command(conf: dict, oc_command: OCcommand):
     oc_res = read_oc_result(conf)
     logger.info(oc_msg)
     logger.info(f'Завершено: {oc_command.desc}')
-    if oc_res != 0:
+    if oc_res != 0 or oc_msg != oc_command.successful_msg:
         err_desc = f'Выполненение:{oc_command.desc}; команда:{oc_command.command_line}, завершено с ошибкой '
         raise ValueError(err_desc)
 
@@ -136,6 +138,7 @@ def restore_bd_configuration(conf):
     oc_command.command_line = command_line + restore_params
     oc_command.desc = 'Восстановление конфигурации'
     oc_command.time_out = conf['onec']['timeout']
+    oc_command.successful_msg = 'Возврат к конфигурации БД успешно завершен'
 
     execute_command(conf, oc_command)
     first_dump = True
@@ -237,6 +240,7 @@ def create_storage_report_command(conf: dict, last_version: int) -> OCcommand:
     oc_command.command_line = command_line + ' ' + report_param_str
     oc_command.desc = 'Формирование отчета по хранилищу'
     oc_command.time_out = onec['timeout']
+    oc_command.successful_msg = 'Отчет успешно построен'
     return oc_command
 
 
@@ -276,6 +280,8 @@ def create_storage_history_command(conf: dict) -> OCcommand:
     oc_command.command_line = command_line + ' ' + convert_param_str
     oc_command.desc = 'Формирование истории хранилища'
     oc_command.time_out = onec['timeout']
+    oc_command.successful_msg = ''
+
     return oc_command
 
 
@@ -403,6 +409,8 @@ def update_to_storage_version_command(conf: dict, version_for_load: int) -> OCco
     oc_command.command_line = command_line + ' ' + update_param_str
     oc_command.desc = 'Обновление из хранилища'
     oc_command.time_out = onec['update_timeout']
+    oc_command.successful_msg = 'Обновление конфигурации из хранилища успешно завершено'
+
     return oc_command
 
 
@@ -429,6 +437,8 @@ def dump_configuration_to_git_command(conf: dict) -> OCcommand:
         oc_command.command_line = command_line + ' ' + dump_param_str + ' -update'
     oc_command.desc = 'Выгрузка в git'
     oc_command.time_out = onec['dump_timeout']
+    oc_command.successful_msg = ''
+
     return oc_command
 
 
