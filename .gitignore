@@ -13,8 +13,8 @@ dist
 dist/**
 drafts
 drafts/**
-tests/data
-tests/data/**
+tests/test data/
+tests/test data/**
 tests/storage
 tests/storage/**
 
