@@ -1,8 +1,8 @@
 {
 	"script_config_path": "C:\\projects\\StorageToGit\\config.json",
-	"empty_cf_path": "C:\\projects\\StorageToGit\\tests\\empty_1Cv8.cf",
 	"empty_dt_path": "C:\\projects\\StorageToGit\\tests\\empty_1Cv8.dt",
-	"data_path": "C:\\projects\\StorageToGit\\tests\\data\\",
+	"data_path": "C:\\projects\\StorageToGit\\tests\\test data\\",
 	"base_name": "База тестирования переноса истории в git",
+	"git_bare_path": "C:\\projects\\StorageToGit\\tests\\test data\\bare\\conf_src",
 	"bd_creating_timeout": 60
 }

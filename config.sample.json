@@ -2,13 +2,14 @@
 	"description": ["Пути в конфиг пишутся как есть, не зависимо от наличия в них пробелов. ",
 		"В параметрах логирования если для 'rotate_time' указано 'midnight', то интервал игнорируется",
 		"для остальных типов ротации логов см. документацию python модуль logging",
-		"обработчик файлов логирования TimedRotatingFileHandler"
+		"обработчик файлов логирования TimedRotatingFileHandler",
+		"настройка push_after_time используется в случае если push_after_convertation==false"
 		],
 	"onec": {
 		"start_path": "C:\\Program Files\\1cv8\\8.3.20.1838\\bin\\1cv8.exe",
 		"report_convert_processor_path": "C:\\projects\\StorageToGit\\ОтчетПоХранилищуВjson.epf",
-		"result_dump_path": "C:\\projects\\StorageToGit\\tests\\storage\\test spaces\\result.txt",
-		"log_file_path": "C:\\projects\\StorageToGit\\tests\\storage\\test spaces\\out.txt",
+		"result_dump_path": "C:\\projects\\StorageToGit\\tests\\test data\\result.txt",
+		"log_file_path": "C:\\projects\\StorageToGit\\tests\\test data\\out.txt",
 		"timeout": 100,
 		"update_timeout": 4800,
 		"dump_timeout": 10800
@@ -17,8 +18,8 @@
 		"path": "C:\\projects\\StorageToGit\\tests\\storage\\Test Storage",
 		"user": "ReadOnly",
 		"password": "",
-		"report_path": "C:\\projects\\StorageToGit\\tests\\storage\\test spaces\\storage_report.mxl",
-		"json_report_path": "C:\\projects\\StorageToGit\\tests\\storage\\test spaces\\storage_history.json",
+		"report_path": "C:\\projects\\StorageToGit\\tests\\test data\\storage_report.mxl",
+		"json_report_path": "C:\\projects\\StorageToGit\\tests\\test data\\storage_history.json",
 		"authors": [
 			{
 				"user": "Администратор",
@@ -29,30 +30,32 @@
 				"email": "readonly@readonly.com"
 			}
 		],
-		"version_path": "C:\\projects\\StorageToGit\\tests\\storage\\test spaces\\storage_version.json"
+		"version_path": "C:\\projects\\StorageToGit\\tests\\test data\\storage_version.json"
 	},
 	"info_base": {
-		"connection_string": "File=\"C:\\Users\\milut\\Documents\\StorageReceiver\";",
+		"connection_string": "File=\"C:\\projects\\StorageToGit\\tests\\test data\\StorageReceiver\";",
 		"user": "Администратор",
 		"password": "",
 		"windows_auth": false
 	},
 	"git": {
-		"path": "C:\\projects\\StorageToGit\\tests\\storage\\test spaces\\src_\\.git",
-		"configuration_src_path": "C:\\projects\\StorageToGit\\tests\\storage\\test spaces\\src_",
+		"path": "C:\\projects\\StorageToGit\\tests\\test data\\test_repo\\conf_src",
+		"configuration_src_path": "C:\\projects\\StorageToGit\\tests\\test data\\test_repo\\conf_src",
 		"default_user_email": "defuser@mail.dev",
-		"push_timeout": 1200
+		"push_timeout": 1200,
+		"commit_msg_prefix": "ConfStorageName",
+		"push_time": "20:00"
 	},
 	"logging": {
 		"level": "DEBUG",
-		"path": "C:\\projects\\StorageToGit\\tests\\storage\\test spaces\\log.txt",
+		"path": "C:\\projects\\StorageToGit\\tests\\test data\\log.txt",
 		"rotate_time": "midnight",
 		"rotate_interval": 1,
 		"copy_count": 5
 	},
 	"script": {
 		"terminate": false,
-		"terminate_after": "20:00",
+		"terminate_after": "10:00",
 		"push_after_convertation": true
 	}
 }

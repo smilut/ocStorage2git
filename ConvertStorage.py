@@ -324,32 +324,44 @@ def terminate_script(conf: dict):
         cur_time = datetime.now().time()
         if cur_time > terminate_time:
             logger.info('Выполнение скрипта остановлено по расписанию')
-            git_push(conf)
+            if script_opt['push_after_convertation']:
+                git_push(conf)
+            else:
+                logger.info('Выполнение git push при завершении скрипта отключено в файле настроек скрипта')
+
             sys.exit()
+
+
+def git_push_after_time(conf: dict):
+    global logger
+    script_opt = conf['script']
+    git_opt = conf['git']
+
+    if not script_opt['push_after_convertation'] and git_opt['push_time'] != '':
+        push_time = datetime.strptime(git_opt['push_time'], "%H:%M").time()
+        cur_time = datetime.now().time()
+        if cur_time > push_time:
+            logger.info('git push по расписанию')
+            git_push(conf)
 
 
 def git_push(conf: dict):
     global logger
 
-    script_opt = conf['script']
+    logger.info('Начало git push')
 
-    if script_opt['push_after_convertation']:
-        logger.info('Начало git push')
+    git_options = conf['git']
+    repo = git.Repo(git_options['path'], search_parent_directories=False)
+    try:
+        origin = repo.remotes['origin']
+    except IndexError as ie:
+        logger.exception("Ошибка получения удаленного репозитария")
+        raise ie
 
-        git_options = conf['git']
-        repo = git.Repo(git_options['path'], search_parent_directories=False)
-        try:
-            origin = repo.remotes['origin']
-        except IndexError as ie:
-            logger.exception("Ошибка получения удаленного репозитария")
-            raise ie
-
-        # for linux only
-        # origin.push(kill_after_timeout=git_options['push_timeout'])
-        origin.push()
-        logger.info('Выполнение git push завершено')
-    else:
-        logger.info('Выполнение git push отключено в файле настроек скрипта')
+    # for linux only
+    # origin.push(kill_after_timeout=git_options['push_timeout'])
+    origin.push()
+    logger.info('Выполнение git push завершено')
 
     pass
 
@@ -380,6 +392,7 @@ def scan_history(conf: dict):
         last_version = ver
         save_last_version(conf, last_version)
         logger.info(f'Завершена обработка версии {ver}')
+        git_push_after_time(conf)
         terminate_script(conf)
 
     git_push(conf)
@@ -455,7 +468,8 @@ def git_author_for_version(conf: dict, author: str) -> str:
     return '{author} <{mail}>'.format(author=author, mail=default_mail)
 
 
-def get_commit_label(version_for_dump: int, version_data: dict) -> str:
+def get_commit_label(conf: dict, version_for_dump: int, version_data: dict) -> str:
+    git_opt = conf['git']
     ver_label = version_data['Version']
     comment = version_data['CommitMessage']
     changed_obj = 'Изменено:\n'
@@ -470,7 +484,8 @@ def get_commit_label(version_for_dump: int, version_data: dict) -> str:
     if len(added_obj) > 512:
         added_obj = added_obj[:512] + '...'
 
-    label = f'storage ver:{version_for_dump}; {ver_label}; \n {comment}\n\n' \
+    commit_msg_prefix = git_opt['commit_msg_prefix']
+    label = f'{commit_msg_prefix} ver:{version_for_dump}; {ver_label}; \n {comment}\n\n' \
             f'{added_obj} {changed_obj}\n'
     logger.info('Сообщение для git commit; %s', label)
 
@@ -480,8 +495,6 @@ def get_commit_label(version_for_dump: int, version_data: dict) -> str:
 # выгружает основную конфигурацию в git и выполняет commit
 # от имени пользователя поместившего версию в хранилище
 def dump_configuration_to_git(conf: dict, version_for_dump: int, version_data: dict):
-    global first_dump
-
     oc_command = dump_configuration_to_git_command(conf)
     execute_command(conf, oc_command)
 
@@ -499,7 +512,7 @@ def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: 
 
     ver_author = version_data['Author']
     git_author = git_author_for_version(conf, ver_author)
-    label = get_commit_label(version_for_dump, version_data)
+    label = get_commit_label(conf, version_for_dump, version_data)
     commit_stamp = datetime.strptime(version_data['CommitDate'] + ' ' + version_data['CommitTime'], "%d.%m.%Y %H:%M:%S")
 
     repo.git.commit('-m', label, author=git_author, date=commit_stamp)
