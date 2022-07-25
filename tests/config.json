@@ -3,6 +3,6 @@
 	"empty_dt_path": "C:\\projects\\StorageToGit\\tests\\empty_1Cv8.dt",
 	"data_path": "C:\\projects\\StorageToGit\\tests\\test data\\",
 	"base_name": "База тестирования переноса истории в git",
-	"git_bare_path": "C:\\projects\\StorageToGit\\tests\\test data\\bare\\conf_src",
+	"git_bare_path": "C:\\projects\\StorageToGit\\tests\\test data\\bare\\conf",
 	"bd_creating_timeout": 60
 }

@@ -352,6 +352,12 @@ def git_push(conf: dict):
 
     git_options = conf['git']
     repo = git.Repo(git_options['path'], search_parent_directories=False)
+    # добавляем номер версии преред push
+    # теоретически должно помочь при определении
+    # новой порции кода в сонаре
+    tag = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    repo.create_tag(tag)
+
     try:
         origin = repo.remotes['origin']
     except IndexError as ie:

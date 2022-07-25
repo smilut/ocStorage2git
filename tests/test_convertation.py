@@ -163,7 +163,7 @@ def init_test_data_folder():
     with open(init_file_path, mode='w') as init_file:
         init_file.write('init repo')
     git_env = git.cmd.Git(git_path)
-    git_env.execute(command='git add .')
+    git_env.execute(command='git add init_file.txt')
     git_env.execute(command='git commit -m "init commit"')
     git_env.execute(command='git push')
 
