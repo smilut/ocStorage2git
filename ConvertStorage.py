@@ -491,7 +491,7 @@ def get_commit_label(conf: dict, version_for_dump: int, version_data: dict) -> s
         added_obj = added_obj[:512] + '...'
 
     commit_msg_prefix = git_opt['commit_msg_prefix']
-    label = f'{commit_msg_prefix} ver:{version_for_dump}; {ver_label}; \n {comment}\n\n' \
+    label = f'{commit_msg_prefix} ver:{version_for_dump}; {ver_label}; \n\n {comment}\n\n' \
             f'{added_obj} {changed_obj}\n'
     logger.info('Сообщение для git commit; %s', label)
 
