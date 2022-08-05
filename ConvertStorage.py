@@ -329,7 +329,7 @@ def terminate_script(conf: dict):
             else:
                 logger.info('Выполнение git push при завершении скрипта отключено в файле настроек скрипта')
 
-            sys.exit()
+            sys.exit(0)
 
 
 def git_push_after_time(conf: dict):
