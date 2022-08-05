@@ -491,7 +491,7 @@ def get_commit_label(conf: dict, version_for_dump: int, version_data: dict) -> s
         added_obj = added_obj[:512] + '...'
 
     commit_msg_prefix = git_opt['commit_msg_prefix']
-    label = f'{commit_msg_prefix} ver:{version_for_dump}; {ver_label}; \n {comment}\n\n' \
+    label = f'{commit_msg_prefix} ver:{version_for_dump}; {ver_label}; \n \n{comment}\n\n' \
             f'{added_obj} {changed_obj}\n'
     logger.info('Сообщение для git commit; %s', label)
 
@@ -504,10 +504,8 @@ def dump_configuration_to_git(conf: dict, version_for_dump: int, version_data: d
     oc_command = dump_configuration_to_git_command(conf)
     execute_command(conf, oc_command)
 
-    logger.info('Начало git commit')
     git_commit_storage_version(conf, version_for_dump, version_data)
-    logger.info('git commit - завершен')
-
+  
 
 def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: dict):
     logger.info('Начало git add')
@@ -521,6 +519,7 @@ def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: 
     label = get_commit_label(conf, version_for_dump, version_data)
     commit_stamp = datetime.strptime(version_data['CommitDate'] + ' ' + version_data['CommitTime'], "%d.%m.%Y %H:%M:%S")
 
+    logger.info('Начало git commit')
     repo.git.commit('-m', label, author=git_author, date=commit_stamp)
     logger.info('Завершен git commit; %s', version_for_dump)
 
