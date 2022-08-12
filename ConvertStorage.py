@@ -1,12 +1,18 @@
 import argparse
 import os
-import sys
+# import sys
 import json
 import subprocess
 import git
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
+import multiprocessing
+from multiprocessing import Process
+
+
+lock = multiprocessing.Lock()
+
 
 global logger
 global first_dump
@@ -109,7 +115,7 @@ def read_oc_result(conf: dict) -> int:
         return 1
 
 
-def execute_command(conf: dict, oc_command: OCcommand):
+def execute_command(conf: dict, oc_command: OCcommand, logger: logging.Logger):
     logger.info(f'Начало: {oc_command.desc}')
     logger.info("Команда: %s", oc_command.command_line)
     subprocess.run(oc_command.command_line, shell=False, timeout=oc_command.time_out)
@@ -140,7 +146,7 @@ def restore_bd_configuration(conf):
     oc_command.time_out = conf['onec']['timeout']
     oc_command.successful_msg = 'Возврат к конфигурации БД успешно завершен'
 
-    execute_command(conf, oc_command)
+    execute_command(conf, oc_command, logger)
     first_dump = True
 
 
@@ -245,6 +251,8 @@ def create_storage_report_command(conf: dict, last_version: int) -> OCcommand:
 
 
 def create_storage_report(conf: dict, last_version: int):
+    global logger
+
     storage = conf['storage']
 
     # удаляем отчет от предыдущего запуска
@@ -252,7 +260,7 @@ def create_storage_report(conf: dict, last_version: int):
         os.remove(storage['report_path'])
 
     oc_command = create_storage_report_command(conf, last_version)
-    execute_command(conf, oc_command)
+    execute_command(conf, oc_command, logger)
 
 
 # example:
@@ -286,6 +294,8 @@ def create_storage_history_command(conf: dict) -> OCcommand:
 
 
 def create_storage_history(conf: dict):
+    global logger
+
     storage = conf['storage']
 
     # удаляем историю оставшуюся от предыдущего запуска
@@ -293,7 +303,7 @@ def create_storage_history(conf: dict):
         os.remove(storage['json_report_path'])
 
     oc_command = create_storage_history_command(conf)
-    execute_command(conf, oc_command)
+    execute_command(conf, oc_command, logger)
 
 
 # преобразует json файл с историей хранилища
@@ -315,6 +325,7 @@ def read_storage_history(conf: dict) -> dict:
     return history_data
 
 
+'''
 def terminate_script(conf: dict):
     global logger
     script_opt = conf['script']
@@ -325,29 +336,31 @@ def terminate_script(conf: dict):
         if cur_time > terminate_time:
             logger.info('Выполнение скрипта остановлено по расписанию')
             if script_opt['push_after_convertation']:
-                git_push(conf)
+                git_push(conf, logger)
             else:
                 logger.info('Выполнение git push при завершении скрипта отключено в файле настроек скрипта')
 
             sys.exit(0)
+'''
 
 
+'''
 def git_push_after_time(conf: dict):
     global logger
-    script_opt = conf['script']
+
+    #script_opt = conf['script']
     git_opt = conf['git']
 
-    if not script_opt['push_after_convertation'] and git_opt['push_time'] != '':
+    #if not script_opt['push_after_convertation'] and git_opt['push_time'] != '':
+    if git_opt['push_time'] != '':
         push_time = datetime.strptime(git_opt['push_time'], "%H:%M").time()
         cur_time = datetime.now().time()
         if cur_time > push_time:
             logger.info('git push по расписанию')
-            git_push(conf)
+            git_push(conf, logger)
+'''
 
-
-def git_push(conf: dict):
-    global logger
-
+def git_push(conf: dict, logger: logging.Logger):
     logger.info('Начало git push')
 
     git_options = conf['git']
@@ -374,12 +387,14 @@ def git_push(conf: dict):
 # проходит по версиям хранилища от меньшей к большей
 # и выгружает данные каждой версии из истории в git
 def scan_history(conf: dict):
+    global logger
     global first_dump
 
     # при каждом запуске скрипта промежуточная конфигурация возвращается
     # к конфе базы данных, поэтому выгружать в файлы надо всю загруженную
     # из хранилища конфигурацию
     first_dump = True
+
     logger.info('Начало переноса истории хранилища в git')
     history_data = read_storage_history(conf)
     versions = list()
@@ -387,21 +402,33 @@ def scan_history(conf: dict):
         versions.append(int(key))
 
     versions.sort()
+    git_process = None
     for ver in versions:
         logger.info(f'Начало обработки версии {ver}')
         version_data = history_data[str(ver)]
-        update_to_storage_version(conf, ver)
-        dump_configuration_to_git(conf, ver, version_data)
+        update_to_storage_version(conf, ver) # загрузка из хранилища
+
+        # выгрузка в локальную папку git
+        dump_process = Process(target=dump_configuration_to_git, args=(conf, first_dump, logger, lock))
+        dump_process.start()
+        dump_process.join()
+
+        # add, commit and push изменений в локальном git
+        git_process = Process(target=git_commit_storage_version, args=(conf, ver, version_data, logger, lock))
+        git_process.start()
+
         # т.к. очередная версия хранилища уже загружена в основную конфигурацию,
         # то следующая выгрузка в гит может быть инкрементной
         first_dump = False
         last_version = ver
         save_last_version(conf, last_version)
         logger.info(f'Завершена обработка версии {ver}')
-        git_push_after_time(conf)
-        terminate_script(conf)
+        #terminate_script(conf)
 
-    git_push(conf)
+    if not (git_process is None):
+        git_process.join()
+
+    git_push(conf, logger)
     logger.info('Завершен перенос истории хранилища в git')
 
 
@@ -436,13 +463,13 @@ def update_to_storage_version_command(conf: dict, version_for_load: int) -> OCco
 # обновляет основную конфигурацию до указанной версии
 # из хранилища
 def update_to_storage_version(conf: dict, version_for_load: int):
+    global logger
+
     oc_command = update_to_storage_version_command(conf, version_for_load)
-    execute_command(conf, oc_command)
+    execute_command(conf, oc_command, logger)
 
 
-def dump_configuration_to_git_command(conf: dict) -> OCcommand:
-    global first_dump
-
+def dump_configuration_to_git_command(conf: dict, first_dump: bool) -> OCcommand:
     onec = conf['onec']
     git_options = conf['git']
     command_line = get_onec_command_line(conf, 'DESIGNER')
@@ -474,7 +501,7 @@ def git_author_for_version(conf: dict, author: str) -> str:
     return '{author} <{mail}>'.format(author=author, mail=default_mail)
 
 
-def get_commit_label(conf: dict, version_for_dump: int, version_data: dict) -> str:
+def get_commit_label(conf: dict, version_for_dump: int, version_data: dict, logger: logging.Logger) -> str:
     git_opt = conf['git']
     ver_label = version_data['Version']
     comment = version_data['CommitMessage']
@@ -498,16 +525,17 @@ def get_commit_label(conf: dict, version_for_dump: int, version_data: dict) -> s
     return label
 
 
-# выгружает основную конфигурацию в git и выполняет commit
-# от имени пользователя поместившего версию в хранилище
-def dump_configuration_to_git(conf: dict, version_for_dump: int, version_data: dict):
-    oc_command = dump_configuration_to_git_command(conf)
-    execute_command(conf, oc_command)
+# выгружает основную конфигурацию в локальную папку git
+def dump_configuration_to_git(conf: dict, first_dump: bool, logger: logging.Logger, lock: multiprocessing.Lock):
+    lock.acquire()
+    oc_command = dump_configuration_to_git_command(conf, first_dump)
+    execute_command(conf, oc_command, logger)
+    lock.release()
 
-    git_commit_storage_version(conf, version_for_dump, version_data)
-  
-
-def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: dict):
+# выполняет add, commit от имени пользователя поместившего версию в хранилище
+# а также push в соответствии с настройками
+def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: dict, logger: logging.Logger, lock):
+    lock.acquire()
     logger.info('Начало git add')
     git_options = conf['git']
     repo = git.Repo(git_options['path'], search_parent_directories=False)
@@ -516,12 +544,16 @@ def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: 
 
     ver_author = version_data['Author']
     git_author = git_author_for_version(conf, ver_author)
-    label = get_commit_label(conf, version_for_dump, version_data)
+    label = get_commit_label(conf, version_for_dump, version_data, logger)
     commit_stamp = datetime.strptime(version_data['CommitDate'] + ' ' + version_data['CommitTime'], "%d.%m.%Y %H:%M:%S")
 
     logger.info('Начало git commit')
     repo.git.commit('-m', label, author=git_author, date=commit_stamp)
     logger.info('Завершен git commit; %s', version_for_dump)
+
+    #git_push_after_time(conf)
+    git_push(conf, logger)
+    lock.release()
 
 
 # сохраняет номер последней обработанной версии
