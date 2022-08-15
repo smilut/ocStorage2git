@@ -39,12 +39,11 @@
 		"windows_auth": false
 	},
 	"git": {
-		"path": "C:\\projects\\StorageToGit\\tests\\test data\\test_repo\\conf_src",
-		"configuration_src_path": "C:\\projects\\StorageToGit\\tests\\test data\\test_repo\\conf_src",
+		"path": "C:\\projects\\StorageToGit\\tests\\test data\\test_repo\\conf",
+		"configuration_src_path": "C:\\projects\\StorageToGit\\tests\\test data\\test_repo\\conf\\src",
 		"default_user_email": "defuser@mail.dev",
 		"push_timeout": 1200,
-		"commit_msg_prefix": "ConfStorageName",
-		"push_time": "20:00"
+		"commit_msg_prefix": "ConfStorageName"
 	},
 	"logging": {
 		"level": "DEBUG",
@@ -52,10 +51,5 @@
 		"rotate_time": "midnight",
 		"rotate_interval": 1,
 		"copy_count": 5
-	},
-	"script": {
-		"terminate": false,
-		"terminate_after": "10:00",
-		"push_after_convertation": true
 	}
 }

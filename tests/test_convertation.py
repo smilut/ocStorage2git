@@ -1,5 +1,7 @@
 import shutil
 import unittest
+from logging.handlers import TimedRotatingFileHandler
+
 import ConvertStorage
 
 import os
@@ -15,9 +17,17 @@ global conf
 global logger
 
 
-def start_logger(conf):
+def start_logger():
     global logger
-    logger = logging.getLogger(__name__)
+
+    log_path: str = 'test_log.log'
+    handler = TimedRotatingFileHandler(log_path, when='midnight', backupCount=1,
+                                               encoding='utf-8')
+    handler.setFormatter(logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(message)s; %(desc)s',
+                                               defaults={"desc": ''}))
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
 
 
 def create_empty_db():
@@ -181,6 +191,7 @@ def setUpModule():
     global conf
     global test_cfg
 
+    start_logger()
     conf_path = os.path.abspath("C:\\projects\\StorageToGit\\tests\\config.json")
     with open(conf_path, mode="r", encoding="utf-8") as conf_file:
         test_cfg = json.load(conf_file)
@@ -190,9 +201,6 @@ def setUpModule():
 
     remove_test_data_folder()
     init_test_data_folder()
-    ConvertStorage.start_logger(conf)
-    logger = ConvertStorage.logger
-    # start_logger(conf)
 
     logger.info('Подготовка тестовой среды')
     create_test_db()
