@@ -27,7 +27,6 @@ class OCcommand:
 # и выполнение git add, commit, push
 lock = multiprocessing.Lock()
 
-
 # логирование в параллельных процессах
 
 def curr_logger_id():
@@ -57,14 +56,14 @@ def main_logger_config(conf: dict):
     logger.addHandler(handler)
 
 
-def main_log_listener(conf: dict, queue: multiprocessing.Queue):
+def main_log_listener(conf: dict, queue: multiprocessing.Queue, log_listener_on: multiprocessing.Queue):
     main_logger_config(conf)
-    while True:
+    while log_listener_on.empty() or not(queue.empty()): # True:
         while not queue.empty():
             record = queue.get()
             logger = logging.getLogger(record.name)
             logger.handle(record)  # No level or filter logic applied - just do it!
-        sleep(1)
+        sleep(0.1)
 
 
 def subprocess_logger_config(conf: dict, queue: multiprocessing.Queue):
@@ -76,9 +75,10 @@ def subprocess_logger_config(conf: dict, queue: multiprocessing.Queue):
     logger.setLevel(logging.getLevelName(log_cfg['level']))
 
 
-def start_main_logger(conf: dict, queue: multiprocessing.Queue):
-    listener = multiprocessing.Process(target=main_log_listener, args=(conf, queue))
+def start_main_logger(conf: dict, queue: multiprocessing.Queue, log_listener_on: multiprocessing.Queue):
+    listener = multiprocessing.Process(target=main_log_listener, args=(conf, queue, log_listener_on))
     listener.start()
+    return listener
 
 # завершение секции логирования
 
@@ -534,7 +534,6 @@ def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: 
     repo.git.commit('-m', label, author=git_author, date=commit_stamp)
     logger.info('Завершен git commit; %s', version_for_dump)
 
-    #git_push_after_time(conf)
     git_push(conf)
 
     save_last_version(conf, version_for_dump)
@@ -585,7 +584,6 @@ def scan_history(conf: dict, queue: multiprocessing.Queue):
 
     logger.info('Завершен перенос истории хранилища в git')
 
-
 # сохраняет номер последней обработанной версии
 # для того чтобы продолжить следующую загрузку
 # со следующей
@@ -601,7 +599,9 @@ def save_last_version(conf: dict, last_version: int):
 # основной скрипт. вынесен в отдельную функцию для удобства тестирования.
 def convert_storage_to_git(conf):
     queue = multiprocessing.Queue(-1)
-    start_main_logger(conf, queue)
+    log_listener_on = multiprocessing.Queue(-1)
+
+    listener = start_main_logger(conf, queue, log_listener_on)
     subprocess_logger_config(conf, queue)
     logger = logging.getLogger(curr_logger_id())
     try:
@@ -616,6 +616,9 @@ def convert_storage_to_git(conf):
     except Exception as e:
         logger.exception('Script error')
         raise e
+    finally:
+        log_listener_on.put("Stop logging")
+        listener.join()
 
 
 if __name__ == '__main__':
