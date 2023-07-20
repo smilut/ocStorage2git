@@ -564,12 +564,19 @@ def scan_history(conf: dict, queue: multiprocessing.Queue):
 
     versions.sort()
     git_process = None
+    prev_ver = ""
     for ver in versions:
         logger.info(f'Начало обработки версии {ver}')
         version_data = history_data[str(ver)]
         update_to_storage_version(conf, ver)  # загрузка из хранилища
 
         # выгрузка в локальную папку git
+        if prev_ver == "":
+            logger.info(f'Начало выгрузки {ver} в локальный git')
+        else:
+            logger.info(f'Завершение процессов git для версии {prev_ver}')
+            logger.info(f'Начало выгрузки {ver} в локальный git')
+
         dump_process = Process(target=dump_configuration_to_git, args=(conf, first_dump, ver, lock, queue))
         dump_process.start()
         dump_process.join()
@@ -581,7 +588,9 @@ def scan_history(conf: dict, queue: multiprocessing.Queue):
         # т.к. очередная версия хранилища уже загружена в основную конфигурацию,
         # то следующая выгрузка в гит может быть инкрементной
         first_dump = False
-
+        last_ver = ver
+        save_last_version(conf, last_ver)
+        logger.info(f'Завершена обработка версии {ver}')
     if not (git_process is None):
         git_process.join()
 
