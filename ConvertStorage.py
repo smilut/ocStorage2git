@@ -458,7 +458,8 @@ def git_push(conf: dict):
     # теоретически должно помочь при определении
     # новой порции кода в сонаре
     tag = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    repo.create_tag(tag)
+    out = repo.create_tag(tag)
+    logger.info("new tag created: %s", out)
 
     try:
         origin = repo.remotes['origin']
@@ -468,7 +469,8 @@ def git_push(conf: dict):
 
     # for linux only
     # origin.push(kill_after_timeout=git_options['push_timeout'])
-    origin.push()
+    out = origin.push()
+    logger.info('git push out: %s', out)
     logger.info('Выполнение git push завершено')
 
 
@@ -522,7 +524,8 @@ def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: 
     logger.info('Начало git add; %s', version_for_dump)
     git_options = conf['git']
     repo = git.Repo(git_options['path'], search_parent_directories=False)
-    repo.index.add('*')
+    out = repo.index.add('*')
+    logger.info("git add out: %s", out)
     logger.info('Завершен git add; %s', version_for_dump)
 
     ver_author = version_data['Author']
