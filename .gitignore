@@ -28,6 +28,7 @@ storage_report.mxl
 storage_version.json
 
 /tests/*.log
+/tests/*log*.*
 /tests/check.bat
 /tests/sonar-scanner.properties
 /tests/.scannerwork/

@@ -36,7 +36,8 @@
 		"connection_string": "File=\"C:\\projects\\StorageToGit\\tests\\test data\\StorageReceiver\";",
 		"user": "Администратор",
 		"password": "",
-		"windows_auth": false
+		"windows_auth": false,
+		"empty_db_path": "C:\\projects\\StorageToGit\\empty_1Cv8.dt"
 	},
 	"git": {
 		"path": "C:\\projects\\StorageToGit\\tests\\test data\\test_repo\\conf",

@@ -230,14 +230,18 @@ def init_configuration() -> dict:
 # из отчета по хранилищу
 def restore_bd_configuration(conf: dict):
     command_line = get_onec_command_line(conf, 'DESIGNER')
-    restore_params = ' /RollbackCfg'
-
     oc_command = OCcommand()
-    oc_command.command_line = command_line + restore_params
     oc_command.desc = 'Восстановление конфигурации'
     oc_command.time_out = conf['onec']['timeout']
     oc_command.successful_msg = 'Возврат к конфигурации БД успешно завершен'
 
+    empty_db_path = conf['info_base']['empty_db_path']
+    restore_params = ' /RollbackCfg'
+    if empty_db_path != "":
+        restore_params = f' /RestoreIB {empty_db_path}'
+        oc_command.successful_msg = 'Загрузка информационной базы успешно завершена'
+
+    oc_command.command_line = command_line + restore_params
     execute_command(conf, oc_command)
 
 
