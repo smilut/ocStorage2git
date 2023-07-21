@@ -452,9 +452,9 @@ def dump_configuration_to_git(conf: dict, first_dump: bool, ver: int, lock: mult
 
 # помещает все выгруженные в git изменения
 # в remote git. выполняется как в основно, так и в дочернем потоках
-def git_push(conf: dict):
+def git_push(conf: dict, ver:  int):
     logger = logging.getLogger(curr_logger_id())
-    logger.info('Начало git push')
+    logger.info(f'Начало git push; {ver}')
 
     git_options = conf['git']
     repo = git.Repo(git_options['path'], search_parent_directories=False)
@@ -463,19 +463,24 @@ def git_push(conf: dict):
     # новой порции кода в сонаре
     tag = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     out = repo.create_tag(tag)
-    logger.info("new tag created: %s", out)
+    logger.info(f'git push {ver}, new tag created: {out}')
 
     try:
         origin = repo.remotes['origin']
     except IndexError as ie:
-        logger.exception("Ошибка получения удаленного репозитария")
+        logger.exception(f'Ошибка получения удаленного репозитария, git push {ver}')
         raise ie
 
     # for linux only
     # origin.push(kill_after_timeout=git_options['push_timeout'])
-    out = origin.push()
-    logger.info('git push out: %s', out)
-    logger.info('Выполнение git push завершено')
+    # Signature: ``progress(op_code, cur_count, max_count=None, message='')``.
+    origin.push(progress=lambda op_code, cur_count, max_count, message: logger.debug(f'git push ver:{ver} '
+                                                                                     f'code:{op_code}, '
+                                                                                     f'cur.count:{cur_count}, '
+                                                                                     f'total:{max_count}, '
+                                                                                     f'message:{message}'))
+    # logger.info(f'git push out; {ver}: {out}')
+    logger.info(f'Выполнение git push {ver} завершено')
 
 
 # возвращает автора коммита для сохранения версии в git
@@ -528,8 +533,10 @@ def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: 
     logger.info('Начало git add; %s', version_for_dump)
     git_options = conf['git']
     repo = git.Repo(git_options['path'], search_parent_directories=False)
-    out = repo.index.add('*')
-    logger.info("git add out: %s", out)
+    # f(path, done=False, item=item) -- ламбда для вывода результатов git add
+    out = repo.index.add("*", True, fprogress=lambda path, done, item: logger.debug(f'git add; {version_for_dump}; {path}'))
+    add_count = len(out)
+    logger.info(f'git add out; {version_for_dump}: updated {add_count} file(s)')
     logger.info('Завершен git add; %s', version_for_dump)
 
     ver_author = version_data['Author']
@@ -541,7 +548,7 @@ def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: 
     repo.git.commit('-m', label, author=git_author, date=commit_stamp)
     logger.info('Завершен git commit; %s', version_for_dump)
 
-    git_push(conf)
+    git_push(conf, version_for_dump)
 
     save_last_version(conf, version_for_dump)
     logger.info('Завершена обработка версии %s', version_for_dump)
@@ -609,7 +616,7 @@ def save_last_version(conf: dict, last_version: int):
     with open(storage_data_path, mode='w') as storage_data_file:
         json.dump({'last_version': last_version}, storage_data_file)
 
-    logger.info('Сохранен номер обработанной версии; %s', storage_data_path)
+    logger.info(f'Сохранен номер обработанной версии {last_version}; {storage_data_path}')
 
 
 # основной скрипт. вынесен в отдельную функцию для удобства тестирования.
