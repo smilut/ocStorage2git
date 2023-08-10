@@ -48,7 +48,7 @@ def main_logger_config(conf: dict):
                                            backupCount=log_cfg['copy_count'],
                                            encoding='utf-8')
 
-    handler.setFormatter(logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(func)s; %(lineno)s; %(message)s; %(desc)s',
+    handler.setFormatter(logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(funcName)s; %(lineno)d; %(message)s; %(desc)s',
                                            defaults={"desc": ''}))
 
     logger = logging.getLogger()
@@ -229,6 +229,8 @@ def init_configuration() -> dict:
 # на продолжение блокирует генерацию истории хранилища
 # из отчета по хранилищу
 def restore_bd_configuration(conf: dict):
+    logger = logging.getLogger(curr_logger_id())
+    logger.info('Начало')
     command_line = get_onec_command_line(conf, 'DESIGNER')
     oc_command = OCcommand()
     oc_command.desc = 'Восстановление конфигурации'
@@ -243,7 +245,7 @@ def restore_bd_configuration(conf: dict):
 
     oc_command.command_line = command_line + restore_params
     execute_command(conf, oc_command)
-
+    logger.info('Завершено')
 
 # получает номер последней версии, которую удалось
 # прочитать из хранилища.
@@ -302,6 +304,8 @@ def create_storage_report_command(conf: dict, last_version: int) -> OCcommand:
 
 
 def create_storage_report(conf: dict, last_version: int):
+    logger = logging.getLogger(curr_logger_id())
+    logger.info('Начало')    
     storage = conf['storage']
 
     # удаляем отчет от предыдущего запуска
@@ -310,6 +314,7 @@ def create_storage_report(conf: dict, last_version: int):
 
     oc_command = create_storage_report_command(conf, last_version)
     execute_command(conf, oc_command)
+    logger.info('Завершено')
 
 
 # Команда запуска обработки преобразования отчета по хранилиу
@@ -345,6 +350,8 @@ def create_storage_history_command(conf: dict) -> OCcommand:
 
 
 def create_storage_history(conf: dict):
+    logger = logging.getLogger(curr_logger_id())
+    logger.info('Начало')
     storage = conf['storage']
 
     # удаляем историю оставшуюся от предыдущего запуска
@@ -353,7 +360,7 @@ def create_storage_history(conf: dict):
 
     oc_command = create_storage_history_command(conf)
     execute_command(conf, oc_command)
-
+    logger.info('Завершено')
 
 # преобразует json файл с историей хранилища
 # в упорядоченный список структур, которые описывают версии
@@ -411,9 +418,11 @@ def update_to_storage_version_command(conf: dict, version_for_load: int) -> OCco
 # обновляет основную конфигурацию до указанной версии
 # из хранилища. выполняется в основном потоке.
 def update_to_storage_version(conf: dict, version_for_load: int):
+    logger = logging.getLogger(curr_logger_id())
+    logger.info('Начало')
     oc_command = update_to_storage_version_command(conf, version_for_load)
     execute_command(conf, oc_command)
-
+    logger.info('Завершено')    
 
 # команда выгрузки кофигурации в файлы
 def dump_configuration_to_git_command(conf: dict, first_dump: bool, ver: int) -> OCcommand:
@@ -550,7 +559,7 @@ def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: 
         out = repo.index.add("*", True, fprogress=lambda path, done, item: logger.debug(f'git add; {version_for_dump}; {path}'))
         add_count = len(out)
         logger.info(f'git add out; {version_for_dump}: updated {add_count} file(s)')
-        logger.info('Завершен git add; %s', version_for_dump)
+        logger.info('Завершено git add; %s', version_for_dump)
 
         ver_author = version_data['Author']
         git_author = git_author_for_version(conf, ver_author)
@@ -559,17 +568,17 @@ def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: 
 
         logger.info('Начало git commit %s', version_for_dump)
         repo.git.commit('-m', label, author=git_author, date=commit_stamp)
-        logger.info('Завершен git commit; %s', version_for_dump)
+        logger.info('Завершено git commit; %s', version_for_dump)
 
         git_push(conf, version_for_dump)
 
         save_last_version(conf, version_for_dump)
-        logger.info('Завершена обработка версии %s', version_for_dump)
+        logger.info('Завершено: обработка версии %s', version_for_dump)
     except Exception as ex:
         logger.exception(f'Ошибка помещения config в общий git repo; {version_for_dump}')
     finally:
         lock.release()
-        logger.info(f'Завершено помещения config в общий git repo; {version_for_dump}')
+        logger.info(f'Завершено: помещение config в общий git repo; {version_for_dump}')
 
 # завершение блока команд git
 
@@ -617,11 +626,11 @@ def scan_history(conf: dict, queue: multiprocessing.Queue):
         first_dump = False
         last_ver = ver
         save_last_version(conf, last_ver)
-        logger.info(f'Завершена обработка версии {ver}')
+        logger.info(f'Завершено: обработка версии {ver}')
     if not (git_process is None):
         git_process.join()
 
-    logger.info('Завершен перенос истории хранилища в git')
+    logger.info('Завершено: перенос истории хранилища в git')
 
 # сохраняет номер последней обработанной версии
 # для того чтобы продолжить следующую загрузку
