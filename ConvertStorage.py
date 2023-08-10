@@ -48,7 +48,7 @@ def main_logger_config(conf: dict):
                                            backupCount=log_cfg['copy_count'],
                                            encoding='utf-8')
 
-    handler.setFormatter(logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(message)s; %(desc)s',
+    handler.setFormatter(logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(func)s; %(lineno)s; %(message)s; %(desc)s',
                                            defaults={"desc": ''}))
 
     logger = logging.getLogger()
@@ -438,11 +438,20 @@ def dump_configuration_to_git_command(conf: dict, first_dump: bool, ver: int) ->
 # выгружает основную конфигурацию в локальную папку git
 # выполняется в дочернем процессе
 def dump_configuration_to_git(conf: dict, first_dump: bool, ver: int, lock: multiprocessing.Lock, queue: multiprocessing.Queue):
+    logger = logging.getLogger(curr_logger_id())
+    logger.info(f'Начало dump config to git; {ver}')
+
     lock.acquire()
-    subprocess_logger_config(conf, queue)
-    oc_command = dump_configuration_to_git_command(conf, first_dump, ver)
-    execute_command(conf, oc_command)
-    lock.release()
+    try:
+        subprocess_logger_config(conf, queue)
+        oc_command = dump_configuration_to_git_command(conf, first_dump, ver)
+        execute_command(conf, oc_command)
+    except Exception as ex:
+        logger.exception(f'Ошибка dump config to git; {ver}')
+
+    finally:
+        lock.release()
+        logger.info(f'Завершено dump config to git; {ver}')
 
 # завершение блока выгрузки конфигурации
 
@@ -527,33 +536,40 @@ def get_commit_label(conf: dict, version_for_dump: int, version_data: dict) -> s
 # а также push в соответствии с настройками. выполняется в дочернем потоке
 def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: dict,
                                lock: multiprocessing.Lock, queue: multiprocessing.Queue):
-    lock.acquire()
-    subprocess_logger_config(conf, queue)
     logger = logging.getLogger(curr_logger_id())
-    logger.info('Начало git add; %s', version_for_dump)
-    git_options = conf['git']
-    repo = git.Repo(git_options['path'], search_parent_directories=False)
-    # f(path, done=False, item=item) -- ламбда для вывода результатов git add
-    out = repo.index.add("*", True, fprogress=lambda path, done, item: logger.debug(f'git add; {version_for_dump}; {path}'))
-    add_count = len(out)
-    logger.info(f'git add out; {version_for_dump}: updated {add_count} file(s)')
-    logger.info('Завершен git add; %s', version_for_dump)
+    logger.info(f'Начало помещения config в общий git repo; {version_for_dump}')
 
-    ver_author = version_data['Author']
-    git_author = git_author_for_version(conf, ver_author)
-    label = get_commit_label(conf, version_for_dump, version_data)
-    commit_stamp = datetime.strptime(version_data['CommitDate'] + ' ' + version_data['CommitTime'], "%d.%m.%Y %H:%M:%S")
+    lock.acquire()
+    try:
+        subprocess_logger_config(conf, queue)
+        logger = logging.getLogger(curr_logger_id())
+        logger.info('Начало git add; %s', version_for_dump)
+        git_options = conf['git']
+        repo = git.Repo(git_options['path'], search_parent_directories=False)
+        # f(path, done=False, item=item) -- ламбда для вывода результатов git add
+        out = repo.index.add("*", True, fprogress=lambda path, done, item: logger.debug(f'git add; {version_for_dump}; {path}'))
+        add_count = len(out)
+        logger.info(f'git add out; {version_for_dump}: updated {add_count} file(s)')
+        logger.info('Завершен git add; %s', version_for_dump)
 
-    logger.info('Начало git commit %s', version_for_dump)
-    repo.git.commit('-m', label, author=git_author, date=commit_stamp)
-    logger.info('Завершен git commit; %s', version_for_dump)
+        ver_author = version_data['Author']
+        git_author = git_author_for_version(conf, ver_author)
+        label = get_commit_label(conf, version_for_dump, version_data)
+        commit_stamp = datetime.strptime(version_data['CommitDate'] + ' ' + version_data['CommitTime'], "%d.%m.%Y %H:%M:%S")
 
-    git_push(conf, version_for_dump)
+        logger.info('Начало git commit %s', version_for_dump)
+        repo.git.commit('-m', label, author=git_author, date=commit_stamp)
+        logger.info('Завершен git commit; %s', version_for_dump)
 
-    save_last_version(conf, version_for_dump)
-    logger.info('Завершена обработка версии %s', version_for_dump)
+        git_push(conf, version_for_dump)
 
-    lock.release()
+        save_last_version(conf, version_for_dump)
+        logger.info('Завершена обработка версии %s', version_for_dump)
+    except Exception as ex:
+        logger.exception(f'Ошибка помещения config в общий git repo; {version_for_dump}')
+    finally:
+        lock.release()
+        logger.info(f'Завершено помещения config в общий git repo; {version_for_dump}')
 
 # завершение блока команд git
 
