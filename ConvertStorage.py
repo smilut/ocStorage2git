@@ -505,14 +505,18 @@ def git_push(conf: dict, ver:  int):
 def git_author_for_version(conf: dict, author: str) -> str:
     git_options = conf['git']
     storage = conf['storage']
+    use_list = storage['use_authors_list']
+    mail_domain = storage['mail_domain']
+    if use_list:
+        authors = storage['authors']
+        default_mail = git_options['default_user_email']
+        for val in authors:
+            if author == val['user']:
+                return '{author} <{mail}>'.format(author=author, mail=val['email'])
 
-    authors = storage['authors']
-    default_mail = git_options['default_user_email']
-    for val in authors:
-        if author == val['user']:
-            return '{author} <{mail}>'.format(author=author, mail=val['email'])
-
-    return '{author} <{mail}>'.format(author=author, mail=default_mail)
+        return '{author} <{mail}>'.format(author=author, mail=default_mail)
+    else:
+        return '{author} <{author}@{mail_domain}>'.format(author=author, mail_domain=mail_domain)
 
 
 # возвращает описание изменений версии для git commit

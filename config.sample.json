@@ -20,13 +20,15 @@
 		"password": "",
 		"report_path": "C:\\projects\\StorageToGit\\tests\\test data\\storage_report.mxl",
 		"json_report_path": "C:\\projects\\StorageToGit\\tests\\test data\\storage_history.json",
+		"use_authors_list": false,
+		"mail_domain": "sample.org",
 		"authors": [
 			{
 				"user": "Администратор",
 				"email": "admin@test.com"
 			},
 			{
-				"user": "ReadOnle",
+				"user": "ReadOnly",
 				"email": "readonly@readonly.com"
 			}
 		],
