@@ -451,13 +451,14 @@ def dump_configuration_to_git(conf: dict, first_dump: bool, ver: int, lock: mult
     logger.info(f'Начало dump config to git; {ver}')
 
     lock.acquire()
+    logger.info(f'Запуск выполнения dump config to git; {ver}')
     try:
         subprocess_logger_config(conf, queue)
         oc_command = dump_configuration_to_git_command(conf, first_dump, ver)
         execute_command(conf, oc_command)
     except Exception as ex:
         logger.exception(f'Ошибка dump config to git; {ver}')
-
+        raise ex
     finally:
         lock.release()
         logger.info(f'Завершено dump config to git; {ver}')
