@@ -34,6 +34,17 @@ def curr_logger_id():
     return f'{__name__}_{pid}'
 
 
+def get_formatter():
+    return logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(message)s; %(desc)s',
+                                           defaults={"desc": ''})
+
+
+def get_stream_handler():
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(get_formatter())
+    return stream_handler
+
+
 def main_logger_config(conf: dict):
     log_cfg = conf['logging']
     log_path: str = log_cfg['path']
@@ -48,12 +59,12 @@ def main_logger_config(conf: dict):
                                            backupCount=log_cfg['copy_count'],
                                            encoding='utf-8')
 
-    handler.setFormatter(logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(funcName)s; %(lineno)d; %(message)s; %(desc)s',
-                                           defaults={"desc": ''}))
+    handler.setFormatter(get_formatter())
 
     logger = logging.getLogger()
     logger.setLevel(logging.getLevelName(log_cfg['level']))
     logger.addHandler(handler)
+    logger.addHandler(get_stream_handler())
 
 
 def main_log_listener(conf: dict, queue: multiprocessing.Queue, log_listener_on: multiprocessing.Queue):
