@@ -483,8 +483,6 @@ def dump_configuration_to_git(conf: dict, first_dump: bool, ver: int, lock: mult
 # помещает все выгруженные в git изменения
 # в remote git. выполняется как в основно, так и в дочернем потоках
 def git_push(conf: dict, ver:  int):
-    pass
-    """
     logger = logging.getLogger(curr_logger_id())
     logger.info(f'Начало git push; {ver}')
 
@@ -513,7 +511,6 @@ def git_push(conf: dict, ver:  int):
                                                                                      f'message:{message}'))
     # logger.info(f'git push out; {ver}: {out}')
     logger.info(f'Выполнение git push {ver} завершено')
-    """
 
 
 # возвращает автора коммита для сохранения версии в git
