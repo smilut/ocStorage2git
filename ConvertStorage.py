@@ -3,9 +3,9 @@ import os
 import json
 import subprocess
 import sys
-
 import git
 import logging
+import locale
 
 from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
@@ -20,6 +20,14 @@ class OCcommand:
     time_out: int
     desc: str
     successful_msg: str
+    ignore_msg: bool
+
+    def __init__(self) -> None:
+        self.command_line = ''
+        self.time_out = 0
+        self.desc = ''
+        self.successful_msg = ''
+        self.ignore_msg = False
 
 
 # организуем параллельность загрузки конфигурации
@@ -35,11 +43,11 @@ def curr_logger_id():
 
 
 def get_formatter():
-    return logging.Formatter('%(asctime)s; %(levelname)s; %(name)s; %(message)s; %(desc)s',
+    return logging.Formatter('%(asctime)s; %(levelname)s; %(funcName)s; %(lineno)d; %(name)s; %(message)s; %(desc)s',
                                            defaults={"desc": ''})
 
 
-def get_stream_handler():
+def get_stream_handler():    
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(get_formatter())
     return stream_handler
@@ -72,12 +80,14 @@ def main_log_listener(conf: dict, queue: multiprocessing.Queue, log_listener_on:
     while log_listener_on.empty() or not(queue.empty()): # True:
         while not queue.empty():
             record = queue.get()
+            logging.basicConfig(encoding='utf-8')
+            sys.stderr.reconfigure(encoding='utf-8')
             logger = logging.getLogger(record.name)
             logger.handle(record)  # No level or filter logic applied - just do it!
         sleep(0.1)
 
 
-def subprocess_logger_config(conf: dict, queue: multiprocessing.Queue):
+def subprocess_logger_config(conf: dict, queue: multiprocessing.Queue):    
     logger_id = curr_logger_id()
     log_cfg = conf['logging']
     handler = logging.handlers.QueueHandler(queue)
@@ -187,7 +197,7 @@ def execute_command(conf: dict, oc_command: OCcommand):
     oc_res = read_oc_result(conf)
     logger.info(f'Сообщение 1С: {oc_msg}')
     logger.info(f'Завершено: {oc_command.desc}')
-    if oc_res != 0 or oc_msg != oc_command.successful_msg:
+    if oc_res != 0 or (oc_msg != oc_command.successful_msg and (not oc_command.ignore_msg)):
         err_desc = f'Выполненение:{oc_command.desc}; команда:{oc_command.command_line}, завершено с ошибкой '
         raise ValueError(err_desc)
 
@@ -451,6 +461,7 @@ def dump_configuration_to_git_command(conf: dict, first_dump: bool, ver: int) ->
     oc_command.desc = f'Выгрузка в git {ver}'
     oc_command.time_out = onec['dump_timeout']
     oc_command.successful_msg = ''
+    oc_command.ignore_msg = True # игнорируем сообщение, т.к. при выгрузке в файлы могут выдаваться предупреждения
 
     return oc_command
 
@@ -666,9 +677,10 @@ def convert_storage_to_git(conf):
     log_listener_on = multiprocessing.Queue(-1)
 
     listener = start_main_logger(conf, queue, log_listener_on)
-    subprocess_logger_config(conf, queue)
+    subprocess_logger_config(conf, queue)    
     logger = logging.getLogger(curr_logger_id())
     try:
+        sys.stderr.reconfigure(encoding='utf-8')
         logger.info('Запуск скрипта')
         last_version = get_last_storage_version(conf)
         restore_bd_configuration(conf)
