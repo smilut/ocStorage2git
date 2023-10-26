@@ -528,8 +528,7 @@ def git_push(conf: dict, ver:  int):
 def git_author_for_version(conf: dict, author: str) -> str:
     git_options = conf['git']
     storage = conf['storage']
-    use_list = storage['use_authors_list']
-    mail_domain = storage['mail_domain']
+    use_list = storage['use_authors_list']    
     if use_list:
         authors = storage['authors']
         default_mail = git_options['default_user_email']
@@ -539,6 +538,7 @@ def git_author_for_version(conf: dict, author: str) -> str:
 
         return '{author} <{mail}>'.format(author=author, mail=default_mail)
     else:
+        mail_domain = storage['mail_domain']
         return '{author} <{author}@{mail_domain}>'.format(author=author, mail_domain=mail_domain)
 
 
@@ -583,9 +583,13 @@ def git_commit_storage_version(conf: dict, version_for_dump: int, version_data: 
         git_options = conf['git']
         repo = git.Repo(git_options['path'], search_parent_directories=False)
         # f(path, done=False, item=item) -- ламбда для вывода результатов git add
-        out = repo.index.add("*", True, fprogress=lambda path, done, item: logger.debug(f'git add; {version_for_dump}; {path}'))
-        add_count = len(out)
-        logger.info(f'git add out; {version_for_dump}: updated {add_count} file(s)')
+        try:
+            out = repo.index.add("*", True, fprogress=lambda path, done, item: logger.debug(f'git add; {version_for_dump}; {path}'))
+            add_count = len(out)
+            logger.info(f'git add out; {version_for_dump}: updated {add_count} file(s)')
+        except Exception as ex:
+            logger.exception(f'Ошибка вывода лога git add при помещении config в общий git repo; {version_for_dump}; {ex}')
+
         logger.info('Завершено git add; %s', version_for_dump)
 
         ver_author = version_data['Author']
