@@ -417,7 +417,7 @@ def update_to_storage_version_command(conf: dict, version_for_load: int) -> OCco
     if storage['password'] == "":
         passwd_flag = ""
     else:
-        passwd_flag = storage['password']
+        passwd_flag = f"/ConfigurationRepositoryP {storage['password']}"
 
     update_param_str = '/ConfigurationRepositoryF "{storage_path}" ' \
                        '/ConfigurationRepositoryN {storage_user} {storage_passwd_flag} ' \
