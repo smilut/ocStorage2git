@@ -684,6 +684,7 @@ def convert_storage_to_git(conf):
     subprocess_logger_config(conf, queue)    
     logger = logging.getLogger(curr_logger_id())
     try:
+        logging.basicConfig(encoding='utf-8')
         sys.stderr.reconfigure(encoding='utf-8')
         logger.info('Запуск скрипта')
         last_version = get_last_storage_version(conf)
